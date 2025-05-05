@@ -8,14 +8,14 @@ Zingle is a real-time web chat application inspired by modern messaging platform
 
 ### 🚀 Tech Stack
 
-| **Layer**      | **Technologies**                                  |
-| -------------- | ------------------------------------------------- |
-| **Frontend**   | React, TailwindCSS, Axios, SignalR (Client)       |
-| **Backend**    | ASP.NET Core Web API, SignalR, JWT Authentication |
-| **Database**   | SQL Server                                        |
-| **Realtime**   | SignalR for real-time messaging                   |
-| **Deployment** | Docker, Azure App Service, Azure Static Web Apps  |
-| **CI/CD**      | GitHub Actions                                    |
+| **Layer**      | **Technologies**                                                        |
+| -------------- | ----------------------------------------------------------------------- |
+| **Frontend**   | React, TailwindCSS, Axios, SignalR (Client), WebRTC                     |
+| **Backend**    | ASP.NET Core Web API, SignalR, JWT Authentication, WebRTC (integration) |
+| **Database**   | SQL Server                                                              |
+| **Realtime**   | SignalR for real-time messaging and call signaling                      |
+| **Deployment** | Docker, Azure App Service, Azure Static Web Apps                        |
+| **CI/CD**      | GitHub Actions                                                          |
 
 ### 🛠️ Development Tools
 
@@ -67,6 +67,13 @@ Zingle is a real-time web chat application inspired by modern messaging platform
 - **User Analytics**: Monitor the number of online users.
 - **Message Statistics**: Track message volume over time.
 
+### 📞 Video & Voice Calling
+
+- **Video Calls**: Real-time one-on-one and group video calls using WebRTC (or third-party services if needed).
+- **Voice Calls**: Real-time one-on-one and group audio calls.
+- **Call Notifications**: Incoming call alerts and call status (ringing, accepted, declined).
+- **Call History**: Log and display past calls for users.
+
 ---
 
 ## 📁 Proposed Project Structure
@@ -75,16 +82,16 @@ Zingle is a real-time web chat application inspired by modern messaging platform
 zingle/
 ├── client/                     # React + TailwindCSS Frontend
 │   ├── src/
-│   │   ├── components/        # Reusable React components
+│   │   ├── components/        # Reusable React components (including call UI)
 │   │   ├── pages/             # Page-level components
 │   │   ├── assets/            # Images, icons, etc.
-│   │   └── services/          # API and SignalR client logic
+│   │   └── services/          # API, SignalR, and WebRTC client logic
 │   └── Dockerfile             # Docker configuration for frontend
 ├── server/                     # ASP.NET Core Backend
-│   ├── Controllers/           # API endpoints
-│   ├── Hubs/                  # SignalR hubs for real-time
+│   ├── Controllers/           # API endpoints (including call signaling)
+│   ├── Hubs/                  # SignalR hubs for real-time (messaging & calls)
 │   ├── Models/                # Data models and entities
-│   ├── Services/              # Business logic and SignalR services
+│   ├── Services/              # Business logic, SignalR, and call services
 │   └── Dockerfile             # Docker configuration for backend
 ├── docker-compose.yml          # Multi-container setup
 └── README.md                   # Project documentation
@@ -109,7 +116,7 @@ zingle/
 - **Frontend**: Deployed on Azure Static Web Apps for fast, scalable hosting.
 - **Backend**: Deployed on Azure App Service using Docker containers.
 - **Database**: Hosted on Azure SQL Database or Azure PostgreSQL.
-- **Realtime**: Optionally use Azure SignalR Service for scalability.
+- **Realtime**: Optionally use Azure SignalR Service for scalability and WebRTC for media streaming.
 
 ---
 
