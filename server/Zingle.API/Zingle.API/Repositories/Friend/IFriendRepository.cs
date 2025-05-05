@@ -1,0 +1,1 @@
+// IFriendRepository.cs
