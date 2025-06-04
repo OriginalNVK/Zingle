@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply dark bg-dark-bg text-dark-text;
+  }
+}
+
+/* Custom styles for dark mode */
+.dark {
+  color-scheme: dark;
+}
+
+/* Default background and text colors for dark mode */
+.dark body {
+  @apply bg-dark-bg text-dark-text;
+}
+
+/* Card/container styles for dark mode */
+.dark .bg-white {
+  @apply bg-dark-card;
+}
+
+/* Border colors for dark mode */
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  @apply border-dark-border;
+}
+
+/* Text colors for dark mode */
+.dark .text-gray-500,
+.dark .text-gray-600 {
+  @apply text-dark-muted;
+}
+
+.dark .text-gray-700,
+.dark .text-gray-800,
+.dark .text-gray-900 {
+  @apply text-dark-text;
+}

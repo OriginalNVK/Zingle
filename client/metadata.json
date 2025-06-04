@@ -1,0 +1,9 @@
+{
+  "name": "Real-Time Chat App (Full-Stack)",
+  "description": "A feature-rich real-time chat application. Frontend built with React, backend with ASP.NET Core Web API and SignalR. This outlines the structure for a full-stack solution including user management, friend system, messaging, media sharing (concept), and admin dashboard (concept).",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "prompt": ""
+}

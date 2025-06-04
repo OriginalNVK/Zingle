@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "TWJhbDi20xl2AqfZiAyaNhxY2BMUv79Jzp12fgAbJQU=",
+  "Source": "Zingle.API",
+  "BasePath": "_content/Zingle.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}
