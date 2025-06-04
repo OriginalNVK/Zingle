@@ -1,1 +1,0 @@
-// FriendList.jsx
