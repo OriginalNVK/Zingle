@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Zingle.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fe27bf7ff7fa4d61d10c5f0427121fdaeb06a6f9")]
 [assembly: System.Reflection.AssemblyProductAttribute("Zingle.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Zingle.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

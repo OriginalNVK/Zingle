@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { User } from '../types';
 import { UserRole } from '../types';
 import { authApi } from '../services/api/authApi';
+import { tokenStorage } from '../utils/tokenStorage';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -22,13 +23,12 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
   useEffect(() => {
     const loadUser = async () => {
       setIsLoading(true);
       try {
-        const token = localStorage.getItem('token');
-        if (token) {
+        // Use tokenStorage to check if we have a valid token
+        if (tokenStorage.isTokenValid()) {
           const user = await authApi.getCurrentUser();
           // Convert string role to UserRole enum
           setCurrentUser({
@@ -38,7 +38,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } catch (error) {
         console.error("Failed to load user session", error);
-        localStorage.removeItem('token');
+        tokenStorage.removeToken();
         setCurrentUser(null);
       } finally {
         setIsLoading(false);

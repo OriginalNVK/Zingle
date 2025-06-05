@@ -1,6 +1,7 @@
 import * as signalR from '@microsoft/signalr';
 import type { Message } from '../types';
 import { MessageType } from '../types';
+import { tokenStorage } from '../utils/tokenStorage';
 
 interface TypingIndicatorPayload {
   chatId: string;
@@ -8,7 +9,7 @@ interface TypingIndicatorPayload {
   isTyping: boolean;
 }
 
-export default class SignalRChatService {
+export class SignalRChatService {
     private connection: signalR.HubConnection | null = null;
     private messageCallbacks: ((message: Message) => void)[] = [];
     private typingCallbacks: ((payload: TypingIndicatorPayload) => void)[] = [];
@@ -17,22 +18,26 @@ export default class SignalRChatService {
 
     constructor() {
         // Defer connection initialization until start() is called
-    }
-
-    private initializeConnection(): void {
+    }    private initializeConnection(): void {
         if (this.isInitialized) return;
 
-        const token = localStorage.getItem('token');
+        const token = tokenStorage.getToken();
         if (!token) {
             throw new Error('No authentication token found');
-        }
-
+        }        const baseUrl = 'http://localhost:5024'; // Match the server URL
         this.connection = new signalR.HubConnectionBuilder()
-            .withUrl('/hubs/chat', {
+            .withUrl(`${baseUrl}/hubs/chat`, {
                 accessTokenFactory: () => token
             })
             .withAutomaticReconnect()
             .build();
+
+        this.setupEventHandlers();
+        this.isInitialized = true;
+    }
+
+    private setupEventHandlers(): void {
+        if (!this.connection) return;
 
         this.connection.on('ReceiveMessage', (message: Message) => {
             this.messageCallbacks.forEach(callback => callback(message));
@@ -46,7 +51,11 @@ export default class SignalRChatService {
             this.messageStatusCallbacks.forEach(callback => callback(data));
         });
 
-        this.isInitialized = true;
+        // Reconnect handling
+        this.connection.onclose(async (error) => {
+            console.log('SignalR Connection closed, attempting to reconnect...', error);
+            await this.retryConnection();
+        });
     }
 
     private async retryConnection(retryAttempt = 0, maxRetries = 5): Promise<void> {
@@ -67,10 +76,10 @@ export default class SignalRChatService {
 
     async start(): Promise<void> {
         try {
-            if (!this.connection) {
+            if (!this.isInitialized) {
                 this.initializeConnection();
             }
-            
+
             if (this.connection?.state === signalR.HubConnectionState.Disconnected) {
                 await this.connection.start();
                 console.log('SignalR Connection started');
@@ -121,4 +130,21 @@ export default class SignalRChatService {
         if (!this.connection) throw new Error('SignalR connection not initialized');
         await this.connection.invoke('SendTypingIndicator', { chatId, isTyping });
     }
+
+    async joinChat(chatId: string): Promise<void> {
+        if (!this.connection) throw new Error('SignalR connection not initialized');
+        await this.connection.invoke('JoinChat', chatId);
+    }
+
+    async leaveChat(chatId: string): Promise<void> {
+        if (!this.connection) throw new Error('SignalR connection not initialized');
+        await this.connection.invoke('LeaveChat', chatId);
+    }
+
+    async markMessageAsRead(chatId: string, messageId: string): Promise<void> {
+        if (!this.connection) throw new Error('SignalR connection not initialized');
+        await this.connection.invoke('MarkMessageAsRead', chatId, messageId);
+    }
 }
+
+export default SignalRChatService;

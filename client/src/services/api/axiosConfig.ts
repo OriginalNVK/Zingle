@@ -1,7 +1,9 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../../config';
+import { tokenStorage } from '../../utils/tokenStorage';
 
 const api = axios.create({
-    baseURL: 'https://localhost:7043/api',
+    baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -10,7 +12,7 @@ const api = axios.create({
 // Add a request interceptor
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token');
+        const token = tokenStorage.getToken();
         if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -26,7 +28,7 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem('token');
+            tokenStorage.removeToken();
             window.location.href = '/login';
         }
         return Promise.reject(error);

@@ -54,7 +54,13 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, isOpen, onClo
 
 const FriendsPage: React.FC = () => {
   const { currentUser } = useAuth();
-  const [friendRequests, setFriendRequests] = useState<{ received: { id: string; fromUser: User; createdAt: Date }[]; sent: { id: string; toUser: User; createdAt: Date }[]; }>({ received: [], sent: [] });
+  const [friendRequests, setFriendRequests] = useState<{ 
+    received: { id: string; fromUser: User; createdAt: Date }[]; 
+    sent: { id: string; toUser: User; createdAt: Date }[]; 
+  }>({ 
+    received: [], 
+    sent: [] 
+  });
   const [friends, setFriends] = useState<User[]>([]);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isLoadingFriends, setIsLoadingFriends] = useState(true);
@@ -146,7 +152,6 @@ const FriendsPage: React.FC = () => {
       setError(e instanceof Error ? e.message : 'Failed to decline friend request');
     }
   };
-
   // Load friends and friend requests
   useEffect(() => {
     if (!currentUser) return;
@@ -164,7 +169,12 @@ const FriendsPage: React.FC = () => {
 
         setFriends(friendsData);
         setFriendRequests(requestsData);
+        
+        // Log to verify data structure
+        console.log('Friends data:', friendsData);
+        console.log('Friend requests data:', requestsData);
       } catch (e) {
+        console.error('Error loading data:', e);
         setError(e instanceof Error ? e.message : 'Failed to load data');
       } finally {
         setIsLoadingFriends(false);
@@ -206,15 +216,13 @@ const FriendsPage: React.FC = () => {
       {/* Friend Requests Section */}
       <div className="p-4 border-b border-dark-border">
         <h2 className="text-xl font-semibold mb-4">Friend Requests</h2>
-        <div className="space-y-3">
-          {isLoadingRequests ? (
+        <div className="space-y-3">          {isLoadingRequests ? (
             <div className="p-4 text-center text-dark-muted">
               Loading friend requests...
             </div>
-          ) : friendRequests.received.length === 0 ? (
+          ) : !friendRequests || !friendRequests.received || friendRequests.received.length === 0 ? (
             <p className="text-dark-muted italic">No pending friend requests</p>
-          ) : (
-            friendRequests.received.map(request => (
+          ) : (            friendRequests.received.map(request => (
               <div 
                 key={request.id}
                 className="flex items-center p-3 rounded-lg bg-dark-card/50 hover:bg-dark-card transition-all duration-200 shadow-sm hover:shadow-md"
@@ -225,7 +233,7 @@ const FriendsPage: React.FC = () => {
                   className="mr-3"
                 />
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{request.fromUser.username}</h3>
+                  <h3 className="font-medium truncate">{request.fromUser?.username || 'Unknown User'}</h3>
                   <p className="text-sm text-dark-muted truncate">
                     Wants to be your friend
                   </p>

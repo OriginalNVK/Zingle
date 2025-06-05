@@ -150,3 +150,4 @@ D:\Work\ProfessionalProject\Zingle-App\server\Zingle.API\obj\Debug\net8.0\refint
 D:\Work\ProfessionalProject\Zingle-App\server\Zingle.API\obj\Debug\net8.0\Zingle.API.pdb
 D:\Work\ProfessionalProject\Zingle-App\server\Zingle.API\obj\Debug\net8.0\Zingle.API.genruntimeconfig.cache
 D:\Work\ProfessionalProject\Zingle-App\server\Zingle.API\obj\Debug\net8.0\ref\Zingle.API.dll
+D:\Work\ProfessionalProject\Zingle-App\server\Zingle.API\obj\Debug\net8.0\Zingle.API.sourcelink.json

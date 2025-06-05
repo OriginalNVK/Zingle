@@ -40,68 +40,71 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
   // Initialize SignalR when user is authenticated
   useEffect(() => {
-    if (currentUser && !chatService) {
-      const service = new SignalRChatService();
-      setChatService(service);
-      
-      service.start().catch(console.error);
+    let service: SignalRChatService | null = null;
 
-      const messageCallback = (message: Message) => {
-        setMessages(prev => ({
-          ...prev,
-          [message.chatId]: [...(prev[message.chatId] || []), message]
-        }));
-        setChats(prevChats => prevChats.map(chat =>
-          chat.id === message.chatId
-            ? { ...chat, lastMessage: message, lastActivity: new Date() }
-            : chat
-        ));
-      };
+    const initializeService = async () => {
+      if (currentUser && !chatService) {
+        try {
+          service = new SignalRChatService();
+          await service.start();
+          setChatService(service);
 
-      const typingCallback = (payload: TypingIndicatorPayload) => {
-        setTypingUsers(prev => {
-          const currentTypers = [...(prev[payload.chatId] || [])];
-          if (payload.isTyping && !currentTypers.includes(payload.userId)) {
-            return {
+          const messageCallback = (message: Message) => {
+            setMessages(prev => ({
               ...prev,
-              [payload.chatId]: [...currentTypers, payload.userId]
-            };
-          } else if (!payload.isTyping) {
-            return {
+              [message.chatId]: [...(prev[message.chatId] || []), message]
+            }));
+            setChats(prevChats => prevChats.map(chat =>
+              chat.id === message.chatId
+                ? { ...chat, lastMessage: message, lastActivity: new Date() }
+                : chat
+            ));
+          };
+
+          const typingCallback = (payload: TypingIndicatorPayload) => {
+            setTypingUsers(prev => {
+              const currentTypers = [...(prev[payload.chatId] || [])];
+              if (payload.isTyping && !currentTypers.includes(payload.userId)) {
+                return {
+                  ...prev,
+                  [payload.chatId]: [...currentTypers, payload.userId]
+                };
+              } else if (!payload.isTyping) {
+                return {
+                  ...prev,
+                  [payload.chatId]: currentTypers.filter(id => id !== payload.userId)
+                };
+              }
+              return prev;
+            });
+          };
+
+          const messageStatusCallback = (data: { chatId: string; messageId: string; userId: string; status: string }) => {
+            setMessages(prev => ({
               ...prev,
-              [payload.chatId]: currentTypers.filter(id => id !== payload.userId)
-            };
-          }
-          return prev;
-        });
-      };
+              [data.chatId]: prev[data.chatId]?.map(message =>
+                message.id === data.messageId
+                  ? { ...message, status: data.status as MessageStatus }
+                  : message
+              ) || []
+            }));
+          };
 
-      const messageStatusCallback = (data: { chatId: string; messageId: string; userId: string; status: string }) => {
-        setMessages(prev => ({
-          ...prev,
-          [data.chatId]: prev[data.chatId]?.map(message =>
-            message.id === data.messageId
-              ? { ...message, status: data.status as MessageStatus }
-              : message
-          ) || []
-        }));
-      };
+          service.onMessage(messageCallback);
+          service.onTyping(typingCallback);
+          service.onMessageStatus(messageStatusCallback);
+        } catch (error) {
+          console.error('Failed to initialize chat service:', error);
+          setChatService(null);
+        }
+      }
+    };
 
-      service.onMessage(messageCallback);
-      service.onTyping(typingCallback);
-      service.onMessageStatus(messageStatusCallback);
-
-      return () => {
-        service.stop().catch(console.error);
-        service.offMessage(messageCallback);
-        service.offTyping(typingCallback);
-        service.offMessageStatus(messageStatusCallback);
-      };
-    }
+    initializeService();
 
     return () => {
-      if (chatService) {
-        chatService.stop().catch(console.error);
+      if (service) {
+        service.stop().catch(console.error);
       }
     };
   }, [currentUser]);

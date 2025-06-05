@@ -12,6 +12,7 @@ import type {
   SignalRBasePayload
 } from '../types';
 import { SIGNALR_CALL_HUB_URL } from "../constants";
+import { tokenStorage } from '../utils/tokenStorage';
 
 // Callbacks that CallContext will provide
 interface SignalRCallCallbacks {
@@ -134,11 +135,11 @@ const ensureConnection = async (userForConnection: User | null): Promise<signalR
     if (connection) { 
         console.log(`SignalR: Previous connection was ${connection.state}. Stopping and creating a new connection object.`);
          await connection.stop().catch(e => console.warn("SignalR: Error stopping previous connection during ensureConnection:", e));
-    }
-    
-    console.log("SignalR: Creating and starting new HubConnection for user:", userForConnection.id);
+    }    console.log("SignalR: Creating and starting new HubConnection for user:", userForConnection.id);
     connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${SIGNALR_CALL_HUB_URL}?userId=${userForConnection.id}`)
+      .withUrl(`${SIGNALR_CALL_HUB_URL}?userId=${userForConnection.id}`, {
+        accessTokenFactory: () => tokenStorage.getToken() || ""
+      })
       .withAutomaticReconnect() 
       .configureLogging(signalR.LogLevel.Information)
       .build();

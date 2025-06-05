@@ -15,7 +15,7 @@ export const ROUTE_PATHS = {
 // --- Call Related Constants ---
 // This URL would point to your SignalR Hub for call signaling.
 // For local development, it might be 'https://localhost:PORT/callhub' or similar.
-export const SIGNALR_CALL_HUB_URL = "/callhub"; // Placeholder, replace with your actual hub URL
+export const SIGNALR_CALL_HUB_URL = "http://localhost:5024/hubs/call"; // Updated with correct server URL and path
 
 // Basic WebRTC configuration using a public STUN server.
 // For production, you'd likely need TURN servers as well.
