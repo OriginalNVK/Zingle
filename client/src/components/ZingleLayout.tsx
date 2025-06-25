@@ -15,6 +15,7 @@ import {
 import { useCall } from '../contexts/CallContext'; // Import useCall
 import { CallState } from '../types'; // Import CallState
 import type { User as UserType } from '../types'; // Import User as type
+import { getDisplayName } from '../utils/displayName';
 
 // Define context type for Outlet
 interface ZingleOutletContext {
@@ -117,7 +118,7 @@ const ZingleLayout: React.FC = () => {
           <div className="flex items-center space-x-3">
             <UserAvatar user={currentUser} size="md" className="border-2 border-primary-500" />
             <div>
-              <p className="text-md font-semibold text-dark-text">{currentUser.username}</p>
+              <p className="text-md font-semibold text-dark-text">{getDisplayName(currentUser)}</p>
               <p className="text-xs text-dark-muted">{currentUser.email}</p>
             </div>
             <button onClick={handleLogout} title="Logout" className="ml-auto p-2 text-dark-muted hover:text-red-500 rounded-full hover:bg-red-500/10 transition-colors">
@@ -188,7 +189,7 @@ const ZingleLayout: React.FC = () => {
                 <div className="bg-gradient-to-br from-primary-500 to-indigo-600 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center text-white transform transition-all animate-pulse">
                     <UserAvatar user={incomingCallUser as UserType} size="xl" className="mx-auto mb-3 border-4 border-primary-300 ring-2 ring-white"/>
                     <h3 className="text-2xl font-bold">Incoming {incomingCallDetails?.type} Call</h3>
-                    <p className="text-lg mb-6">from <span className="font-semibold">{incomingCallUser.username}</span></p>
+                    <p className="text-lg mb-6">from <span className="font-semibold">{getDisplayName(incomingCallUser)}</span></p>
                     <div className="flex justify-around mt-4">
                         <button 
                             onClick={handleDeclineCall} 

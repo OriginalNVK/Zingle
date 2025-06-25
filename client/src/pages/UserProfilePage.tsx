@@ -6,6 +6,7 @@ import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import UserAvatar from '../components/UserAvatar';
 import type { User } from '../types';
+import { getDisplayName } from '../utils/displayName';
 
 // Context type from ZingleLayout is now implicitly handled by useZingleLayoutContext
 
@@ -22,6 +23,7 @@ const UserProfilePage: React.FC = () => {
     if (currentUser) {
       setProfileData({
         username: currentUser.username,
+        nickname: currentUser.nickname,
         email: currentUser.email,
         bio: currentUser.bio || '',
         avatarUrl: currentUser.avatarUrl
@@ -95,6 +97,15 @@ const UserProfilePage: React.FC = () => {
               value={profileData.username || ''}
               onChange={handleChange}
               disabled={!isEditing}
+              className="bg-dark-card border-dark-border text-dark-text"
+            />
+            <Input
+              label="Nickname"
+              name="nickname"
+              value={profileData.nickname || ''}
+              onChange={handleChange}
+              disabled={!isEditing}
+              placeholder="Enter your nickname (optional)"
               className="bg-dark-card border-dark-border text-dark-text"
             />
             <Input

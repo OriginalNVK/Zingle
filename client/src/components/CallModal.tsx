@@ -4,6 +4,7 @@ import { CallState } from '../types';
 import UserAvatar from './UserAvatar';
 import Button from './common/Button';
 import { PhoneIcon, VideoIcon, LogOutIcon as EndCallIcon } from './icons';
+import { getDisplayName } from '../utils/displayName';
 
 // Define proper on/off state icons
 const MicOn: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -71,7 +72,7 @@ const CallModal: React.FC = () => {
         {targetUser && (
             <>
                 <UserAvatar user={targetUser} size="md" className="inline-block mr-2"/>
-                <span className="text-lg font-semibold">Call with {targetUser.username}</span>
+                <span className="text-lg font-semibold">Call with {getDisplayName(targetUser)}</span>
             </>
         )}
         <p className="text-sm capitalize">{callSession.type} Call - {callSession.state}</p>
@@ -86,7 +87,7 @@ const CallModal: React.FC = () => {
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               {targetUser && <UserAvatar user={targetUser} size="xl" showStatus={false} />}
-              {callSession.type === 'voice' && <p className="mt-2 text-xl">{targetUser?.username} (Voice Call)</p>}
+              {callSession.type === 'voice' && <p className="mt-2 text-xl">{targetUser ? getDisplayName(targetUser) : 'Unknown'} (Voice Call)</p>}
                {!callSession.remoteStream && callSession.type === 'video' && <p className="text-gray-400">Waiting for remote video...</p>}
             </div>
           )}

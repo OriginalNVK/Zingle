@@ -10,9 +10,10 @@ import { UserRole } from '../types';
 import type { User } from '../types'; 
 import ChatDetailsSidebar from './ChatDetailsSidebar';
 import { useCall } from '../contexts/CallContext';
+import { getDisplayName } from '../utils/displayName';
 
 const ChatWindow: React.FC = () => {
-  const { activeChatId, messages: allMessages, chats, loadMessages, isLoadingMessages, typingUsers, getChatUserIsTyping, error, isSignalRConnected } = useChat();
+  const { activeChatId, messages: allMessages, chats, loadMessages, isLoadingMessages, isLoadingChats, typingUsers, getChatUserIsTyping, error, isSignalRConnected } = useChat();
   const { currentUser } = useAuth();
   const { initiateCall } = useCall();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -20,6 +21,11 @@ const ChatWindow: React.FC = () => {
 
   const activeChat = chats.find(chat => chat.id === activeChatId);
   const currentChatMessages = activeChatId ? allMessages[activeChatId] || [] : [];
+  
+  // Temporary debug logging
+  if (activeChatId) {
+    console.log(`ChatWindow: activeChatId=${activeChatId}, messagesCount=${currentChatMessages.length}, isLoading=${isLoadingMessages}, error=${error}`);
+  }
   
   const otherParticipant = activeChat && !activeChat.isGroupChat 
     ? activeChat.participants.find(p => p.id !== currentUser?.id) 
@@ -42,17 +48,14 @@ const ChatWindow: React.FC = () => {
     .filter(id => id !== currentUser?.id)
     .map(userId => {
       const participant = activeChat?.participants.find(p => p.id === userId);
-      return participant?.displayName || participant?.username || 'Someone';
+      return participant ? getDisplayName(participant) : 'Someone';
     })
     .filter(Boolean) as string[] : [];
 
   useEffect(() => {
-    if (activeChatId) {
-      // Always load messages when chat is selected
-      loadMessages(activeChatId);
-    }
+    // Close details sidebar when chat changes
     setIsDetailsSidebarOpen(false);
-  }, [activeChatId, loadMessages]);
+  }, [activeChatId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -88,7 +91,7 @@ const ChatWindow: React.FC = () => {
           )}
           <div>
             <h2 className="font-semibold text-dark-text">
-              {activeChat.isGroupChat ? activeChat.name : (displayUserForHeader?.displayName || displayUserForHeader?.username)}
+              {activeChat.isGroupChat ? activeChat.name : (displayUserForHeader ? getDisplayName(displayUserForHeader) : 'Unknown')}
             </h2>
             {isCurrentlyTyping && typingUserNames.length > 0 && (
               <TypingIndicator usersTyping={typingUserNames} />
@@ -142,7 +145,7 @@ const ChatWindow: React.FC = () => {
               </button>
             </div>
           </div>
-        ) : (!isLoadingMessages && currentChatMessages.length === 0 && !error && activeChatId && allMessages.hasOwnProperty(activeChatId)) ? (
+        ) : (!isLoadingMessages && currentChatMessages.length === 0 && !error && activeChatId && allMessages.hasOwnProperty(activeChatId) && !isLoadingChats) ? (
           // Show empty state when messages have been loaded successfully and there are no messages
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="bg-dark-card border border-dark-border rounded-lg p-8 max-w-md">

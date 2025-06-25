@@ -31,6 +31,7 @@ export interface User {
   id: string;
   username: string;
   displayName?: string;
+  nickname?: string;
   email?: string;
   avatarUrl?: string;
   isOnline: boolean;
@@ -56,6 +57,7 @@ export interface AuthResponse {
   id: string;
   username: string;
   displayName?: string;
+  nickname?: string;
   email?: string;
   avatarUrl?: string;
   isOnline: boolean;

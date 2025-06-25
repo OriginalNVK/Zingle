@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import type { User, Message, Chat as ChatType } from '../types';
 import { UserRole, MessageType } from '../types';
 import UserAvatar from './UserAvatar';
+import { getDisplayName } from '../utils/displayName';
 import {
   XIcon,
   FileTextIcon,
@@ -59,7 +60,7 @@ const ChatDetailsSidebar: React.FC<ChatDetailsSidebarProps> = ({
 
   useEffect(() => {
     if (displayUser) {
-      setNickname(displayUser.displayName || displayUser.username);
+      setNickname(getDisplayName(displayUser));
     }
     setViewMode('overview');
     setActiveTab('media');
@@ -196,7 +197,7 @@ const ChatDetailsSidebar: React.FC<ChatDetailsSidebarProps> = ({
         )}
         {!isEditingNickname ? (
           <div className="flex items-center justify-center">
-            <h3 className="text-md font-semibold text-gray-700">{nickname || displayUser?.username}</h3>
+            <h3 className="text-md font-semibold text-gray-700">{nickname || (displayUser ? getDisplayName(displayUser) : 'Unknown')}</h3>
             {!chat.isGroupChat && (
               <button onClick={() => setIsEditingNickname(true)} className="ml-2 text-gray-400 hover:text-primary-500">
                 <Edit2Icon className="w-3.5 h-3.5" />

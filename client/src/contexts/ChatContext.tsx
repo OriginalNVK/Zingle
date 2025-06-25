@@ -174,13 +174,16 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   useEffect(() => {
     if (!currentUser) {
       // User logged out, reset loaded chats
+      console.log('User logged out, resetting chat state...');
       setLoadedChats(new Set());
       setMessages({});
       setError(null);
+      setActiveChatId(null);
+      setTypingUsers({});
     }
   }, [currentUser]);
 
-  const loadMessages = async (chatId: string) => {
+  const loadMessages = useCallback(async (chatId: string) => {
     if (!currentUser) return;
 
     // Check if messages for this chat have already been loaded
@@ -195,10 +198,17 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       console.log('Loading messages for chat:', chatId);
       const chatMessages = await chatApi.getMessages(chatId);
       console.log('Messages loaded:', chatMessages);
+      
+      // Sort messages by timestamp to ensure correct order
+      const sortedMessages = chatMessages.sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+      
       setMessages(prev => ({
         ...prev,
-        [chatId]: chatMessages
+        [chatId]: sortedMessages
       }));
+      
       // Mark this chat as loaded
       setLoadedChats(prev => new Set(prev).add(chatId));
     } catch (error) {
@@ -232,7 +242,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     } finally {
       setIsLoadingMessages(false);
     }
-  };
+  }, [currentUser, loadedChats]);
 
   // Load messages when activeChatId changes
   useEffect(() => {
@@ -247,6 +257,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       
       // Load messages if not already loaded (using the new tracking system)
       if (!loadedChats.has(activeChatId)) {
+        console.log(`Loading messages for chat ${activeChatId} (not previously loaded)`);
         loadMessages(activeChatId);
       } else {
         console.log(`Messages for chat ${activeChatId} already loaded, skipping load...`);
@@ -262,7 +273,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         });
       }
     };
-  }, [activeChatId, chatService, isSignalRConnected, loadedChats]);
+  }, [activeChatId, chatService, isSignalRConnected, loadedChats, loadMessages]);
+
+  // Load messages for activeChatId when chats are loaded and activeChatId is set
+  useEffect(() => {
+    if (activeChatId && !isLoadingChats && chats.length > 0 && !loadedChats.has(activeChatId)) {
+      console.log(`Auto-loading messages for activeChatId ${activeChatId} after chats loaded`);
+      loadMessages(activeChatId);
+    }
+  }, [activeChatId, isLoadingChats, chats.length, loadedChats, loadMessages]);
 
   const sendMessage = async (
     chatId: string,

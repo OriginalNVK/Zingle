@@ -5,6 +5,7 @@ import UserAvatar from './UserAvatar';
 import { SearchIcon } from './icons';
 import Input from './common/Input';
 import { MessageType, UserRole } from '../types';
+import { getDisplayName } from '../utils/displayName';
 
 const ContactList: React.FC = () => {
   const { chats, setActiveChatId, activeChatId, isLoadingChats, getChatUserIsTyping } = useChat();
@@ -13,7 +14,7 @@ const ContactList: React.FC = () => {
 
   const filteredChats = chats.filter(chat => {
     const chatPartner = chat.isGroupChat ? null : chat.participants.find(p => p.id !== currentUser?.id);
-    const nameToSearch = chat.isGroupChat ? chat.name : (chatPartner?.username || chat.name);
+    const nameToSearch = chat.isGroupChat ? chat.name : (chatPartner ? getDisplayName(chatPartner) : chat.name);
     return nameToSearch.toLowerCase().includes(searchTerm.toLowerCase()) ||
            (chat.lastMessage && chat.lastMessage.content.toLowerCase().includes(searchTerm.toLowerCase()));
   });
@@ -91,7 +92,7 @@ const ContactList: React.FC = () => {
                 messagePrefix = 'You: ';
               } else if (chat.isGroupChat && chat.lastMessage) {
                 const sender = chat.participants.find(p => p.id === chat.lastMessage?.senderId);
-                messagePrefix = sender ? `${sender.displayName || sender.username}: ` : '';
+                messagePrefix = sender ? `${getDisplayName(sender)}: ` : '';
               }
 
               return (
@@ -123,7 +124,7 @@ const ContactList: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline">
                       <h3 className="font-medium text-dark-text truncate">
-                        {chat.isGroupChat ? chat.name : (chatPartner?.displayName || chatPartner?.username)}
+                        {chat.isGroupChat ? chat.name : (chatPartner ? getDisplayName(chatPartner) : 'Unknown')}
                       </h3>
                       <span className="text-xs text-dark-muted ml-2">
                         {formatTimestamp(chat.lastMessage?.timestamp)}

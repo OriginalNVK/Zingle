@@ -3,6 +3,7 @@ import type { Message, User } from '../types';
 import { MessageType } from '../types';
 import UserAvatar from './UserAvatar';
 import { CheckIcon, DoubleCheckIcon } from './icons';
+import { getDisplayName } from '../utils/displayName';
 // import { MOCK_USERS } from '../constants'; // To find sender for avatar (if not group chat)
 
 
@@ -37,8 +38,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwnMessage, sh
         )}
 
         <div className={`px-3 py-2 rounded-xl shadow-md hover:shadow-lg transition-shadow ${bubbleClasses} ${!showAvatar && !isOwnMessage ? 'ml-10' : ''} ${!showAvatar && isOwnMessage ? 'mr-10' : ''}`}>
-          {!isOwnMessage && showAvatar && senderUser && !message.chatId.startsWith("group") && (
-            <p className="text-xs font-semibold mb-0.5 text-primary-400">{senderUser.username}</p>
+          {!isOwnMessage && showAvatar && senderUser && (
+            <p className="text-xs font-semibold mb-0.5 text-primary-400">{getDisplayName(senderUser)}</p>
           )}
           
           {message.type === MessageType.IMAGE && message.imageUrl && (

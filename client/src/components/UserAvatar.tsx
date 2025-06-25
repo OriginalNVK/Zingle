@@ -1,7 +1,7 @@
-
 import React from 'react';
 import type { User } from '../types';
 import { DEFAULT_AVATAR_URL } from '../constants';
+import { getDisplayName } from '../utils/displayName';
 
 interface UserAvatarProps {
   user?: User | null; // User can be null or undefined
@@ -12,7 +12,7 @@ interface UserAvatarProps {
 
 const UserAvatar: React.FC<UserAvatarProps> = ({ user, size = 'md', className = '', showStatus = true }) => {
   const avatarUrl = user?.avatarUrl || DEFAULT_AVATAR_URL;
-  const username = user?.username || 'User';
+  const username = user ? getDisplayName(user) : 'User';
   const isOnline = user?.isOnline || false;
 
   const sizeClasses = {

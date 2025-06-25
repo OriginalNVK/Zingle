@@ -11,6 +11,7 @@ import { useAuth } from '../hooks/useAuth';
 import { friendApi } from '../services/api/friendApi';
 import { chatApi } from '../services/api/chatApi';
 import { ROUTE_PATHS } from '../constants';
+import { getDisplayName } from '../utils/displayName';
 
 
 // UserProfileModal component defined within FriendsPage for now, can be extracted
@@ -26,7 +27,7 @@ interface UserProfileModalProps {
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, isOpen, onClose, onAddFriend, onSendMessage, isFriend }) => {
   if (!user) return null;
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`${user.username}'s Profile`}>
+    <Modal isOpen={isOpen} onClose={onClose} title={`${getDisplayName(user)}'s Profile`}>
       <div className="text-center p-4">
         <UserAvatar user={user} size="xl" className="mx-auto mb-4 border-4 border-primary-300" />
         <p className={`text-sm mb-4 ${user.isOnline ? 'text-green-500' : 'text-gray-400'}`}>
@@ -236,7 +237,7 @@ const FriendsPage: React.FC = () => {
                   className="mr-3"
                 />
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{request.fromUser?.username || 'Unknown User'}</h3>
+                  <h3 className="font-medium truncate">{request.fromUser ? getDisplayName(request.fromUser) : 'Unknown User'}</h3>
                   <p className="text-sm text-dark-muted truncate">
                     Wants to be your friend
                   </p>
@@ -299,7 +300,7 @@ const FriendsPage: React.FC = () => {
               >
                 <UserAvatar user={person} size="md" className="mr-3" />
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{person.username}</h3>
+                  <h3 className="font-medium truncate">{getDisplayName(person)}</h3>
                   <p className="text-sm text-dark-muted truncate">
                     {person.bio || "No bio available"}
                   </p>

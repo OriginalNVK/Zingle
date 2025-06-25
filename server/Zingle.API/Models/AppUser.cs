@@ -5,6 +5,7 @@ namespace Zingle.API.Models;
 public class AppUser : IdentityUser
 {
     public string? DisplayName { get; set; }
+    public string? Nickname { get; set; }
     public string? AvatarUrl { get; set; }
     public bool IsOnline { get; set; }
     public DateTime? LastActive { get; set; }
