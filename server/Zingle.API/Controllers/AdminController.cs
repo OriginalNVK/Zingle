@@ -56,6 +56,10 @@ namespace Zingle.API.Controllers
                 {
                     user.Roles = await _userManager.GetRolesAsync(appUser);
                 }
+                else
+                {
+                    user.Roles = new List<string>();
+                }
             }
 
             return Ok(users);

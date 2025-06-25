@@ -4,14 +4,14 @@ import type { Chat, Message, User, TypingIndicatorPayload } from '../types';
 import { MessageType, MessageStatus } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { chatApi } from '../services/api/chatApi';
-import SignalRChatService from '../services/signalRChatService';
+import { SignalRChatService } from '../services/signalRChatService';
 
 interface ChatContextType {
   chats: Chat[];
   messages: { [chatId: string]: Message[] };
   activeChatId: string | null;
   setActiveChatId: (chatId: string | null) => void;
-  sendMessage: (chatId: string, content: string, type?: MessageType, imageUrl?: string, imageBase64?: string) => Promise<void>;
+  sendMessage: (chatId: string, content: string, type?: MessageType) => Promise<void>;
   loadMessages: (chatId: string) => Promise<void>; 
   contacts: User[];
   typingUsers: { [chatId: string]: string[] }; 
@@ -19,6 +19,9 @@ interface ChatContextType {
   isLoadingChats: boolean;
   isLoadingMessages: boolean;
   getChatUserIsTyping: (chatId: string) => boolean;
+  isSignalRConnected: boolean;
+  error: string | null;
+  resetLoadedChats: () => void;
 }
 
 export const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -37,6 +40,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [isLoadingChats, setIsLoadingChats] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [chatService, setChatService] = useState<SignalRChatService | null>(null);
+  const [isSignalRConnected, setIsSignalRConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loadedChats, setLoadedChats] = useState<Set<string>>(new Set());
 
   // Initialize SignalR when user is authenticated
   useEffect(() => {
@@ -45,23 +51,54 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     const initializeService = async () => {
       if (currentUser && !chatService) {
         try {
+          console.log('Initializing SignalR chat service...');
           service = new SignalRChatService();
-          await service.start();
+          // Try to start SignalR but don't fail if it doesn't work
+          try {
+            await service.start();
+            console.log('SignalR chat service initialized successfully');
+            setIsSignalRConnected(true);
+          } catch (signalRError) {
+            console.warn('SignalR initialization failed, continuing without real-time features:', signalRError);
+            setIsSignalRConnected(false);
+            // Still set the service so other parts of the app can work
+          }
           setChatService(service);
 
           const messageCallback = (message: Message) => {
-            setMessages(prev => ({
-              ...prev,
-              [message.chatId]: [...(prev[message.chatId] || []), message]
-            }));
+            console.log('Received message via SignalR:', message);
+            setMessages(prev => {
+              // Check if message already exists to avoid duplicates
+              const existingMessages = prev[message.chatId] || [];
+              const messageExists = existingMessages.some(m => m.id === message.id);
+              
+              if (messageExists) {
+                return prev;
+              }
+              
+              return {
+                ...prev,
+                [message.chatId]: [...existingMessages, message]
+              };
+            });
+            
             setChats(prevChats => prevChats.map(chat =>
               chat.id === message.chatId
                 ? { ...chat, lastMessage: message, lastActivity: new Date() }
                 : chat
             ));
+            
+            // Mark this chat as loaded if it wasn't already
+            setLoadedChats(prev => {
+              if (!prev.has(message.chatId)) {
+                return new Set(prev).add(message.chatId);
+              }
+              return prev;
+            });
           };
 
           const typingCallback = (payload: TypingIndicatorPayload) => {
+            console.log('Received typing indicator via SignalR:', payload);
             setTypingUsers(prev => {
               const currentTypers = [...(prev[payload.chatId] || [])];
               if (payload.isTyping && !currentTypers.includes(payload.userId)) {
@@ -80,6 +117,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           };
 
           const messageStatusCallback = (data: { chatId: string; messageId: string; userId: string; status: string }) => {
+            console.log('Received message status via SignalR:', data);
             setMessages(prev => ({
               ...prev,
               [data.chatId]: prev[data.chatId]?.map(message =>
@@ -96,6 +134,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         } catch (error) {
           console.error('Failed to initialize chat service:', error);
           setChatService(null);
+          setIsSignalRConnected(false);
         }
       }
     };
@@ -105,6 +144,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     return () => {
       if (service) {
         service.stop().catch(console.error);
+        setIsSignalRConnected(false);
       }
     };
   }, [currentUser]);
@@ -116,7 +156,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       
       setIsLoadingChats(true);
       try {
+        console.log('Loading chats...');
         const fetchedChats = await chatApi.getChats();
+        console.log('Chats loaded:', fetchedChats);
         setChats(fetchedChats);
       } catch (error) {
         console.error('Failed to load chats:', error);
@@ -128,32 +170,130 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     loadChats();
   }, [currentUser]);
 
+  // Reset loaded chats when user changes (login/logout)
+  useEffect(() => {
+    if (!currentUser) {
+      // User logged out, reset loaded chats
+      setLoadedChats(new Set());
+      setMessages({});
+      setError(null);
+    }
+  }, [currentUser]);
+
   const loadMessages = async (chatId: string) => {
-    if (!currentUser || !chatService) return;
+    if (!currentUser) return;
+
+    // Check if messages for this chat have already been loaded
+    if (loadedChats.has(chatId)) {
+      console.log(`Messages for chat ${chatId} already loaded, skipping...`);
+      return;
+    }
 
     setIsLoadingMessages(true);
+    setError(null);
     try {
+      console.log('Loading messages for chat:', chatId);
       const chatMessages = await chatApi.getMessages(chatId);
+      console.log('Messages loaded:', chatMessages);
       setMessages(prev => ({
         ...prev,
         [chatId]: chatMessages
       }));
+      // Mark this chat as loaded
+      setLoadedChats(prev => new Set(prev).add(chatId));
     } catch (error) {
       console.error('Failed to load messages:', error);
+      // Show user-friendly error message
+      let errorMessage = 'Failed to load messages';
+      if (error instanceof Error) {
+        if (error.message.includes('Không thể kết nối tới máy chủ')) {
+          errorMessage = error.message;
+        } else if (error.message.includes('timeout')) {
+          errorMessage = 'Không thể kết nối tới máy chủ (timeout). Vui lòng kiểm tra lại backend server hoặc kết nối mạng.';
+        } else if (error.message.includes('Unable to connect to server')) {
+          errorMessage = 'Unable to connect to server. Please check your internet connection and try again.';
+        } else if (error.message.includes('Request timeout')) {
+          errorMessage = 'Request timeout. The server is taking too long to respond. Please try again.';
+        } else if (error.message.includes('Unauthorized')) {
+          errorMessage = 'Session expired. Please log in again.';
+        } else if (error.message.includes('permission')) {
+          errorMessage = 'You do not have permission to access this chat.';
+        } else if (error.message.includes('not found')) {
+          errorMessage = 'Chat not found.';
+        } else if (error.message.includes('Server is not responding')) {
+          errorMessage = 'Server is not responding. Please try again later.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      // You can add a toast notification here or use a state to show error
+      console.error('User-friendly error message:', errorMessage);
+      setError(errorMessage);
     } finally {
       setIsLoadingMessages(false);
     }
   };
+
+  // Load messages when activeChatId changes
+  useEffect(() => {
+    if (activeChatId && chatService) {
+      console.log('Joining chat:', activeChatId);
+      // Join the chat in SignalR
+      if (isSignalRConnected) {
+        chatService.joinChat(activeChatId).catch(error => {
+          console.warn('Failed to join chat via SignalR:', error);
+        });
+      }
+      
+      // Load messages if not already loaded (using the new tracking system)
+      if (!loadedChats.has(activeChatId)) {
+        loadMessages(activeChatId);
+      } else {
+        console.log(`Messages for chat ${activeChatId} already loaded, skipping load...`);
+      }
+    }
+
+    // Leave previous chat when switching
+    return () => {
+      if (activeChatId && chatService && isSignalRConnected) {
+        console.log('Leaving chat:', activeChatId);
+        chatService.leaveChat(activeChatId).catch(error => {
+          console.warn('Failed to leave chat via SignalR:', error);
+        });
+      }
+    };
+  }, [activeChatId, chatService, isSignalRConnected, loadedChats]);
 
   const sendMessage = async (
     chatId: string,
     content: string,
     type: MessageType = MessageType.TEXT
   ) => {
-    if (!currentUser || !chatService) return;
+    if (!currentUser) return;
 
     try {
-      await chatService.sendMessage(chatId, content, type);
+      console.log('Sending message:', { chatId, content, type });
+      // Send message via API first
+      const messageData = {
+        content,
+        type: type.toString()
+      };
+      
+      const newMessage = await chatApi.sendMessage(chatId, messageData);
+      console.log('Message sent successfully:', newMessage);
+      
+      // Add message to local state
+      setMessages(prev => ({
+        ...prev,
+        [chatId]: [...(prev[chatId] || []), newMessage]
+      }));
+      
+      // Update chat's last message
+      setChats(prevChats => prevChats.map(chat =>
+        chat.id === chatId
+          ? { ...chat, lastMessage: newMessage, lastActivity: new Date() }
+          : chat
+      ));
     } catch (error) {
       console.error('Failed to send message:', error);
       throw error;
@@ -161,30 +301,69 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   };
 
   const sendTypingIndicator = (chatId: string, isTyping: boolean) => {
-    if (!currentUser || !chatService) return;
-    chatService.sendTypingIndicator(chatId, isTyping);
+    if (chatService && isSignalRConnected && chatService.isConnected()) {
+      chatService.sendTypingIndicator(chatId, isTyping).catch(console.error);
+    }
   };
 
-  const getChatUserIsTyping = useCallback((chatId: string): boolean => {
-    return (typingUsers[chatId]?.length || 0) > 0;
-  }, [typingUsers]);
+  const getChatUserIsTyping = (chatId: string) => {
+    return (typingUsers[chatId] || []).length > 0;
+  };
 
-  return (
-    <ChatContext.Provider value={{
-      chats,
-      messages,
-      activeChatId,
-      setActiveChatId,
-      sendMessage,
-      loadMessages,
-      contacts,
-      typingUsers,
-      sendTypingIndicator,
-      isLoadingChats,
-      isLoadingMessages,
-      getChatUserIsTyping
-    }}>
-      {children}
-    </ChatContext.Provider>
-  );
+  const resetLoadedChats = () => {
+    setLoadedChats(new Set());
+  };
+
+  // Ensure context is always available with default values
+  const contextValue: ChatContextType = {
+    chats,
+    messages,
+    activeChatId,
+    setActiveChatId,
+    sendMessage,
+    loadMessages,
+    contacts,
+    typingUsers,
+    sendTypingIndicator,
+    isLoadingChats,
+    isLoadingMessages,
+    getChatUserIsTyping,
+    isSignalRConnected,
+    error,
+    resetLoadedChats
+  };
+
+  // Ensure ChatProvider always renders even if there are errors
+  try {
+    return (
+      <ChatContext.Provider value={contextValue}>
+        {children}
+      </ChatContext.Provider>
+    );
+  } catch (error) {
+    console.error('Error rendering ChatProvider:', error);
+    // Return a minimal context to prevent crashes
+    const fallbackContext: ChatContextType = {
+      chats: [],
+      messages: {},
+      activeChatId: null,
+      setActiveChatId: () => {},
+      sendMessage: async () => {},
+      loadMessages: async () => {},
+      contacts: [],
+      typingUsers: {},
+      sendTypingIndicator: () => {},
+      isLoadingChats: false,
+      isLoadingMessages: false,
+      getChatUserIsTyping: () => false,
+      isSignalRConnected: false,
+      error: null,
+      resetLoadedChats: () => {}
+    };
+    return (
+      <ChatContext.Provider value={fallbackContext}>
+        {children}
+      </ChatContext.Provider>
+    );
+  }
 };

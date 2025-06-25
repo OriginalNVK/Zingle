@@ -1,79 +1,80 @@
-
 /**
  * Helper functions for token storage with expiration
  */
-export const tokenStorage = {
-  /**
-   * Store token with expiration time
-   * @param token JWT token string
-   * @param expirationMinutes Expiration time in minutes
-   */
-  setToken(token: string, expirationMinutes: number = 30): void {
-    const expirationTime = new Date();
-    expirationTime.setMinutes(expirationTime.getMinutes() + expirationMinutes);
-    
-    const tokenData = {
-      token,
-      expires: expirationTime.toISOString()
-    };
-    
-    localStorage.setItem('tokenData', JSON.stringify(tokenData));
-  },
+export interface ITokenUser {
+    id: string;
+    email: string;
+    exp?: number;
+}
 
-  /**
-   * Get token if it's still valid
-   * @returns token string or null if expired or not found
-   */
-  getToken(): string | null {
-    const tokenDataString = localStorage.getItem('tokenData');
-    if (!tokenDataString) return null;
-    
+const TOKEN_KEY = 'token';
+const USER_KEY = 'user';
+const EXPIRATION_BUFFER = 60; // 60 seconds buffer
+
+const parseJwt = (token: string): ITokenUser | null => {
     try {
-      const tokenData = JSON.parse(tokenDataString);
-      const expiration = new Date(tokenData.expires);
-      
-      if (expiration > new Date()) {
-        return tokenData.token;
-      } else {
-        // Token expired
-        this.removeToken();
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => 
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        ).join(''));
+        return JSON.parse(jsonPayload);
+    } catch {
         return null;
-      }
-    } catch (error) {
-      console.error('Error parsing token data:', error);
-      this.removeToken();
-      return null;
     }
-  },
+};
 
-  /**
-   * Remove token from storage
-   */
-  removeToken(): void {
-    localStorage.removeItem('tokenData');
-  },
+export const tokenStorage = {
+    /**
+     * Get token string from storage
+     * @returns token string or null if not found
+     */
+    getToken: (): string | null => {
+        return localStorage.getItem(TOKEN_KEY);
+    },
 
-  /**
-   * Check if token is valid and not expired
-   * @returns true if token exists and is valid
-   */
-  isTokenValid(): boolean {
-    return this.getToken() !== null;
-  },
-  
-  /**
-   * Get token expiration time
-   * @returns Date object or null if no valid token
-   */
-  getTokenExpiration(): Date | null {
-    const tokenDataString = localStorage.getItem('tokenData');
-    if (!tokenDataString) return null;
-    
-    try {
-      const tokenData = JSON.parse(tokenDataString);
-      return new Date(tokenData.expires);
-    } catch (error) {
-      return null;
+    /**
+     * Store token string in storage
+     * @param token JWT token string
+     */
+    setToken: (token: string): void => {
+        localStorage.setItem(TOKEN_KEY, token);
+        // Parse and store user data
+        const userData = parseJwt(token);
+        if (userData) {
+            localStorage.setItem(USER_KEY, JSON.stringify(userData));
+        }
+    },
+
+    /**
+     * Get user data from token
+     * @returns user data object or null if not found
+     */
+    getUser: (): ITokenUser | null => {
+        const userJson = localStorage.getItem(USER_KEY);
+        return userJson ? JSON.parse(userJson) : null;
+    },
+
+    /**
+     * Clear token and user data from storage
+     */
+    clear: (): void => {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+    },
+
+    /**
+     * Check if token is valid and not expired
+     * @returns true if token exists and is valid
+     */
+    isTokenValid: (): boolean => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) return false;
+
+        const userData = tokenStorage.getUser();
+        if (!userData?.exp) return false;
+
+        const currentTime = Math.floor(Date.now() / 1000);
+        return userData.exp > (currentTime + EXPIRATION_BUFFER);
     }
-  }
 };

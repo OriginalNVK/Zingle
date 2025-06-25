@@ -50,9 +50,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwnMessage, sh
             />
           )}
           {message.type === MessageType.TEXT && <p className={messageContentClasses}>{message.content}</p>}
-          {message.type === MessageType.SYSTEM && <p className="text-xs italic text-center text-gray-500 px-2 py-1">{message.content}</p>}
+          {message.type === MessageType.SYSTEM && <p className="text-xs italic text-center text-dark-muted px-2 py-1">{message.content}</p>}
           
-          <div className={`text-xs mt-1 flex items-center ${isOwnMessage ? 'text-primary-200 justify-end' : 'text-gray-400 justify-start'}`}>
+          <div className={`text-xs mt-1 flex items-center ${isOwnMessage ? 'text-primary-200 justify-end' : 'text-dark-muted justify-start'}`}>
             <span>{timeFormatter.format(new Date(message.timestamp))}</span>
             {isOwnMessage && message.status && (
               <span className="ml-1">

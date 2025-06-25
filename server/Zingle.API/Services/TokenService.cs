@@ -8,12 +8,15 @@ using Microsoft.Extensions.Configuration;
 namespace Zingle.API.Services;
 
 public class TokenService
-{
-    private readonly IConfiguration _config;
-    private readonly SymmetricSecurityKey _key; public TokenService(IConfiguration config)
+{    private readonly IConfiguration _config;
+    private readonly SymmetricSecurityKey _key; 
+    
+    public TokenService(IConfiguration config)
     {
         _config = config;
-        _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JwtSettings:TokenKey"]));
+        string tokenKey = _config["JwtSettings:TokenKey"] ?? 
+            throw new InvalidOperationException("JWT Token Key not found in configuration");
+        _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey));
     }
 
     public string CreateToken(AppUser user)

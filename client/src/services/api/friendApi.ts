@@ -4,19 +4,17 @@ import type { User, Friend, FriendRequest } from '../../types';
 export const friendApi = {
     getFriends: async (): Promise<User[]> => {
         try {
-            const response = await api.get<User[]>('/friends');
-            return response.data;
+            const response = await api.get<Friend[]>('/friends');
+            // Backend returns FriendshipDto[], so we need to extract the friend user
+            return response.data.map((friendship: Friend) => friendship.friend);
         } catch (error: any) {
             throw new Error(error.response?.data?.message || 'Failed to fetch friends');
         }
-    },    getFriendRequests: async () => {
-        const response = await api.get<{
-            received: { id: string; fromUser: User; createdAt: Date }[];
-            sent: { id: string; toUser: User; createdAt: Date }[];
-        }>('/friends/requests');
-        return response.data;
+    },
+
+    getFriendRequests: async () => {
         try {
-            const response = await api.get('/friends/requests');
+            const response = await api.get<FriendRequest[]>('/friends/requests');
             return response.data;
         } catch (error: any) {
             throw new Error(error.response?.data?.message || 'Failed to fetch friend requests');
@@ -57,6 +55,15 @@ export const friendApi = {
             await api.delete(`/friends/${friendshipId}`);
         } catch (error: any) {
             throw new Error(error.response?.data?.message || 'Failed to remove friend');
+        }
+    },
+
+    getAllUsersExceptAdmin: async (): Promise<User[]> => {
+        try {
+            const response = await api.get<User[]>('/users/all-except-admin');
+            return response.data;
+        } catch (error: any) {
+            throw new Error(error.response?.data?.message || 'Failed to fetch users');
         }
     },
 

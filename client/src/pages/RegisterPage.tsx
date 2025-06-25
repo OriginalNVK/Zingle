@@ -39,11 +39,7 @@ const RegisterPage: React.FC = () => {
   
   const handleSocialLogin = (provider: string) => {
     console.log(`Attempting login with ${provider}... (Mock)`);
-     login( 'Alex Johnson', 'password').then(() => { 
-         navigate(ROUTE_PATHS.CHAT);
-    }).catch(err => {
-        setError(`Mock social login failed: ${err.message}`);
-    });
+    setError(`${provider} registration is not implemented yet. Please use email/password registration.`);
   };
 
   return (

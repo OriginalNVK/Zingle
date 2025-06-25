@@ -2,6 +2,7 @@ import * as signalR from '@microsoft/signalr';
 import type { Message } from '../types';
 import { MessageType } from '../types';
 import { tokenStorage } from '../utils/tokenStorage';
+import { API_URL } from '../config';
 
 interface TypingIndicatorPayload {
   chatId: string;
@@ -15,21 +16,46 @@ export class SignalRChatService {
     private typingCallbacks: ((payload: TypingIndicatorPayload) => void)[] = [];
     private messageStatusCallbacks: ((data: { chatId: string; messageId: string; userId: string; status: string }) => void)[] = [];
     private isInitialized = false;
+    private isConnecting = false;
+    private connectionAttempts = 0;
+    private maxConnectionAttempts = 3;
 
     constructor() {
         // Defer connection initialization until start() is called
-    }    private initializeConnection(): void {
+    }
+
+    private initializeConnection(): void {
         if (this.isInitialized) return;
 
         const token = tokenStorage.getToken();
         if (!token) {
             throw new Error('No authentication token found');
-        }        const baseUrl = 'http://localhost:5024'; // Match the server URL
+        }
+
+        // Use the same base URL as API
+        const baseUrl = API_URL.replace('/api', ''); // Remove /api from the end
         this.connection = new signalR.HubConnectionBuilder()
             .withUrl(`${baseUrl}/hubs/chat`, {
-                accessTokenFactory: () => token
+                accessTokenFactory: () => token,
+                skipNegotiation: false,
+                transport: signalR.HttpTransportType.WebSockets,
+                withCredentials: true
             })
-            .withAutomaticReconnect()
+            .withAutomaticReconnect({
+                nextRetryDelayInMilliseconds: retryContext => {
+                    if (retryContext.previousRetryCount === 0) {
+                        return 0;
+                    }
+                    if (retryContext.previousRetryCount < 3) {
+                        return 2000;
+                    }
+                    if (retryContext.previousRetryCount < 5) {
+                        return 10000;
+                    }
+                    return null;
+                }
+            })
+            .configureLogging(signalR.LogLevel.Information)
             .build();
 
         this.setupEventHandlers();
@@ -39,19 +65,52 @@ export class SignalRChatService {
     private setupEventHandlers(): void {
         if (!this.connection) return;
 
-        this.connection.on('ReceiveMessage', (message: Message) => {
+        this.connection.on('ReceiveMessage', (messageData: any) => {
+            console.log('Received message:', messageData);
+            // Convert backend message format to frontend Message type
+            const message: Message = {
+                id: messageData.Id,
+                chatId: messageData.ChatId,
+                senderId: messageData.SenderId,
+                senderUsername: messageData.SenderUsername,
+                content: messageData.Content,
+                timestamp: new Date(messageData.Timestamp),
+                isRead: messageData.IsRead,
+                type: messageData.Type,
+                imageUrl: messageData.ImageUrl,
+                fileUrl: messageData.FileUrl,
+                fileName: messageData.FileName,
+                fileSize: messageData.FileSize,
+                status: messageData.Status
+            };
             this.messageCallbacks.forEach(callback => callback(message));
         });
 
-        this.connection.on('UserTyping', (payload: TypingIndicatorPayload) => {
-            this.typingCallbacks.forEach(callback => callback(payload));
+        this.connection.on('ReceiveTypingIndicator', (payload: any) => {
+            console.log('Received typing indicator:', payload);
+            // Convert backend typing indicator format to frontend format
+            const typingPayload: TypingIndicatorPayload = {
+                chatId: payload.ChatId,
+                userId: payload.UserId,
+                isTyping: payload.IsTyping
+            };
+            this.typingCallbacks.forEach(callback => callback(typingPayload));
         });
 
         this.connection.on('MessageStatus', (data: { chatId: string; messageId: string; userId: string; status: string }) => {
+            console.log('Received message status:', data);
             this.messageStatusCallbacks.forEach(callback => callback(data));
         });
 
-        // Reconnect handling
+        // Connection state change handling
+        this.connection.onreconnecting((error) => {
+            console.log('SignalR Connection reconnecting...', error);
+        });
+
+        this.connection.onreconnected((connectionId) => {
+            console.log('SignalR Connection reconnected with ID:', connectionId);
+        });
+
         this.connection.onclose(async (error) => {
             console.log('SignalR Connection closed, attempting to reconnect...', error);
             await this.retryConnection();
@@ -75,18 +134,53 @@ export class SignalRChatService {
     }
 
     async start(): Promise<void> {
+        if (this.isConnecting) {
+            console.log('SignalR connection already in progress, skipping...');
+            return;
+        }
+
+        if (this.connection?.state === signalR.HubConnectionState.Connected) {
+            console.log('SignalR connection already connected');
+            return;
+        }
+
         try {
+            this.isConnecting = true;
+            this.connectionAttempts = 0;
+
             if (!this.isInitialized) {
                 this.initializeConnection();
             }
 
-            if (this.connection?.state === signalR.HubConnectionState.Disconnected) {
+            if (this.connection && this.connection.state === signalR.HubConnectionState.Disconnected) {
+                console.log('Starting SignalR connection...');
                 await this.connection.start();
-                console.log('SignalR Connection started');
+                console.log('SignalR Connection started successfully');
+                this.connectionAttempts = 0; // Reset attempts on successful connection
             }
         } catch (err) {
             console.error('Error starting SignalR connection:', err);
-            throw err;
+            this.connectionAttempts++;
+            
+            // Handle specific handshake errors
+            if (err instanceof Error) {
+                if (err.message.includes('Handshake was canceled') || 
+                    err.message.includes('handshake error')) {
+                    console.warn('Handshake error detected, this might be due to server not running or authentication issues');
+                    
+                    // If we have connection attempts left, try to reconnect
+                    if (this.connectionAttempts < this.maxConnectionAttempts) {
+                        console.log(`Retrying connection attempt ${this.connectionAttempts + 1}/${this.maxConnectionAttempts}`);
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        return this.start();
+                    }
+                }
+            }
+            
+            // Don't throw error, just log it and allow the app to continue
+            console.warn('SignalR connection failed, but app will continue without real-time features');
+        } finally {
+            this.isConnecting = false;
         }
     }
 
@@ -122,29 +216,50 @@ export class SignalRChatService {
     }
 
     async sendMessage(chatId: string, content: string, type: MessageType = MessageType.TEXT): Promise<void> {
-        if (!this.connection) throw new Error('SignalR connection not initialized');
-        await this.connection.invoke('SendMessage', { chatId, content, type });
+        if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+            console.warn('SignalR not connected, message will not be sent via real-time');
+            return;
+        }
+        await this.connection.invoke('SendMessage', { 
+            chatId, 
+            content, 
+            type: type.toString() 
+        });
     }
 
     async sendTypingIndicator(chatId: string, isTyping: boolean): Promise<void> {
-        if (!this.connection) throw new Error('SignalR connection not initialized');
-        await this.connection.invoke('SendTypingIndicator', { chatId, isTyping });
+        if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+            console.warn('SignalR not connected, typing indicator will not be sent');
+            return;
+        }
+        await this.connection.invoke('SendTypingIndicator', chatId, isTyping);
     }
 
     async joinChat(chatId: string): Promise<void> {
-        if (!this.connection) throw new Error('SignalR connection not initialized');
+        if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+            console.warn('SignalR not connected, cannot join chat');
+            return;
+        }
         await this.connection.invoke('JoinChat', chatId);
     }
 
     async leaveChat(chatId: string): Promise<void> {
-        if (!this.connection) throw new Error('SignalR connection not initialized');
+        if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+            console.warn('SignalR not connected, cannot leave chat');
+            return;
+        }
         await this.connection.invoke('LeaveChat', chatId);
     }
 
     async markMessageAsRead(chatId: string, messageId: string): Promise<void> {
-        if (!this.connection) throw new Error('SignalR connection not initialized');
+        if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+            console.warn('SignalR not connected, cannot mark message as read');
+            return;
+        }
         await this.connection.invoke('MarkMessageAsRead', chatId, messageId);
     }
-}
 
-export default SignalRChatService;
+    isConnected(): boolean {
+        return this.connection?.state === signalR.HubConnectionState.Connected;
+    }
+}

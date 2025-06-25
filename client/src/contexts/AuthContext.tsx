@@ -23,22 +23,25 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     const loadUser = async () => {
       setIsLoading(true);
       try {
-        // Use tokenStorage to check if we have a valid token
         if (tokenStorage.isTokenValid()) {
           const user = await authApi.getCurrentUser();
-          // Convert string role to UserRole enum
           setCurrentUser({
             ...user,
             role: user.role === 'Admin' ? UserRole.ADMIN : UserRole.USER
           });
+        } else {
+          // Token is expired or invalid, clear it
+          tokenStorage.clear();
+          setCurrentUser(null);
         }
       } catch (error) {
         console.error("Failed to load user session", error);
-        tokenStorage.removeToken();
+        tokenStorage.clear();
         setCurrentUser(null);
       } finally {
         setIsLoading(false);
@@ -52,7 +55,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     try {
       const response = await authApi.login({ email, password });
-      // Convert string role to UserRole enum
+      // Store token in localStorage
+      tokenStorage.setToken(response.token);
       setCurrentUser({
         ...response,
         role: response.role === 'Admin' ? UserRole.ADMIN : UserRole.USER
@@ -69,7 +73,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     try {
       const response = await authApi.register({ username, email, password });
-      // Convert string role to UserRole enum
+      // Store token in localStorage
+      tokenStorage.setToken(response.token);
       setCurrentUser({
         ...response,
         role: response.role === 'Admin' ? UserRole.ADMIN : UserRole.USER
@@ -84,6 +89,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     authApi.logout();
+    tokenStorage.clear();
     setCurrentUser(null);
   };
 

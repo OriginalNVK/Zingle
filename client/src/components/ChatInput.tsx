@@ -70,7 +70,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ chatId }) => {
   }, [chatId, sendTypingIndicator]);
 
   return (
-    <div className="p-3 sm:p-4 border-t border-gray-200 bg-white">
+    <div className="p-3 sm:p-4 border-t border-dark-border bg-dark-card">
       <form onSubmit={handleSubmit} className="flex items-center gap-2">
         <input type="file" 
           ref={fileInputRef}
@@ -82,17 +82,17 @@ const ChatInput: React.FC<ChatInputProps> = ({ chatId }) => {
         <button 
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          className="p-2 hover:bg-dark-hover rounded-full transition-colors"
           aria-label="Attach file"
         >
-          <AttachmentIcon className="w-5 h-5 text-gray-500" />
+          <AttachmentIcon className="w-5 h-5 text-dark-muted" />
         </button>
         <input
           type="text"
           value={messageText}
           onChange={handleInputChange}
           placeholder="Type a message..."
-          className="flex-1 p-2 border border-gray-300 rounded-full focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+          className="flex-1 p-2 border border-dark-border rounded-full focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 bg-dark-bg text-dark-text placeholder-dark-muted"
         />
         <button
           type="submit"

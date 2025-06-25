@@ -4,6 +4,8 @@ using Zingle.API.DTOs;
 using Zingle.API.Models;
 using Zingle.API.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace Zingle.API.Controllers;
 
@@ -49,8 +51,10 @@ public class AuthController : ControllerBase
         user.IsOnline = true;
         user.LastActive = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
-
-        return await CreateUserDto(user);
+        var userDto = await CreateUserDto(user);
+        
+        // Let the CORS middleware handle the headers
+        return userDto;
     }
 
     [HttpPost("register")]
@@ -82,11 +86,40 @@ public class AuthController : ControllerBase
         {
             return BadRequest(result.Errors);
         }
-
+        
         // Add to default role
         await _userManager.AddToRoleAsync(user, "User");
 
-        return await CreateUserDto(user);
+        var userDto = await CreateUserDto(user);
+        
+        // Set proper CORS headers for the response
+        HttpContext.Response.Headers["Access-Control-Allow-Origin"] = 
+            Request.Headers["Origin"].ToString();
+        HttpContext.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+            
+        return userDto;
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<ActionResult<UserDto>> GetCurrentUser()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+        
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var userDto = await CreateUserDto(user);
+        return userDto;
     }
 
     private async Task<UserDto> CreateUserDto(AppUser user)

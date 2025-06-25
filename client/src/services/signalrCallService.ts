@@ -1,4 +1,3 @@
-
 import * as signalR from "@microsoft/signalr";
 import type { 
   User,
@@ -30,6 +29,7 @@ interface SignalRCallCallbacks {
 let connection: signalR.HubConnection | null = null;
 let callCallbacks: SignalRCallCallbacks | null = null;
 let currentSignalRUser: User | null = null; // Store the user for re-connection attempts
+let isConnecting = false; // Flag to prevent multiple simultaneous connection attempts
 
 // Encapsulates setting up all SignalR event handlers for a connection instance
 const setupConnectionHandlers = (conn: signalR.HubConnection) => {
@@ -125,6 +125,19 @@ const ensureConnection = async (userForConnection: User | null): Promise<signalR
     console.log(`SignalR: Connection is already ${connection.state}. Proceeding, invoke will queue/wait.`);
     return connection;
   }
+
+  // Prevent multiple simultaneous connection attempts
+  if (isConnecting) {
+    console.log("SignalR: Connection attempt already in progress, waiting...");
+    // Wait for the current connection attempt to complete
+    while (isConnecting) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    // Check if connection is now available
+    if (connection && connection.state === signalR.HubConnectionState.Connected) {
+      return connection;
+    }
+  }
   
   // If connection doesn't exist, or is Disconnected (or Disconnecting, which means it needs to be recreated)
   // then create and start a new one.
@@ -132,21 +145,29 @@ const ensureConnection = async (userForConnection: User | null): Promise<signalR
       connection.state === signalR.HubConnectionState.Disconnected ||
       connection.state === signalR.HubConnectionState.Disconnecting) {
     
-    if (connection) { 
-        console.log(`SignalR: Previous connection was ${connection.state}. Stopping and creating a new connection object.`);
-         await connection.stop().catch(e => console.warn("SignalR: Error stopping previous connection during ensureConnection:", e));
-    }    console.log("SignalR: Creating and starting new HubConnection for user:", userForConnection.id);
-    connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${SIGNALR_CALL_HUB_URL}?userId=${userForConnection.id}`, {
-        accessTokenFactory: () => tokenStorage.getToken() || ""
-      })
-      .withAutomaticReconnect() 
-      .configureLogging(signalR.LogLevel.Information)
-      .build();
+    isConnecting = true;
     
-    setupConnectionHandlers(connection); // Setup handlers for the NEW connection
-
     try {
+      if (connection) { 
+        console.log(`SignalR: Previous connection was ${connection.state}. Stopping and creating a new connection object.`);
+        try {
+          await connection.stop();
+        } catch (e) {
+          console.warn("SignalR: Error stopping previous connection during ensureConnection:", e);
+        }
+      }
+      
+      console.log("SignalR: Creating and starting new HubConnection for user:", userForConnection.id);
+      connection = new signalR.HubConnectionBuilder()
+        .withUrl(`${SIGNALR_CALL_HUB_URL}?userId=${userForConnection.id}`, {
+          accessTokenFactory: () => tokenStorage.getToken() || ""
+        })
+        .withAutomaticReconnect() 
+        .configureLogging(signalR.LogLevel.Information)
+        .build();
+      
+      setupConnectionHandlers(connection); // Setup handlers for the NEW connection
+
       await connection.start();
       console.log("SignalR Call Hub new connection started successfully. State:", connection.state);
       if (connection.state !== signalR.HubConnectionState.Connected) {
@@ -154,16 +175,24 @@ const ensureConnection = async (userForConnection: User | null): Promise<signalR
         // If it does, it implies an immediate issue post-successful start promise.
         const errMessage = `SignalR: Connection.start() resolved, but state is ${connection.state}.`;
         console.error(errMessage);
-        // connection = null; // Nullify as it's not in a usable state.
         throw new Error(errMessage);
       }
     } catch (err) {
       console.error("SignalR Call Hub new connection start failed: ", err);
+      // Handle AbortError specifically
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.warn("SignalR: Connection was aborted, likely due to component unmount or navigation");
+        // Don't throw error for AbortError, just log it
+        connection = null;
+        throw new Error("Connection was aborted");
+      }
       if (callCallbacks?.onCallError && err instanceof Error) {
         callCallbacks.onCallError("SignalR connection failed: " + err.message);
       }
       connection = null; 
       throw err;
+    } finally {
+      isConnecting = false;
     }
   }
   
@@ -192,6 +221,15 @@ export const initializeSignalRCallService = (callbacks: SignalRCallCallbacks, us
 export const disconnectSignalRCallService = async () => {
   if (connection) {
     console.log("SignalR: Disconnecting call service. Current state:", connection.state);
+    
+    // Don't disconnect if we're currently connecting
+    if (isConnecting) {
+      console.log("SignalR: Connection attempt in progress, waiting before disconnect...");
+      while (isConnecting) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
     connection.off("IncomingCall");
     connection.off("ReceiveOffer");
     connection.off("ReceiveAnswer");
@@ -210,6 +248,7 @@ export const disconnectSignalRCallService = async () => {
   }
   connection = null; 
   currentSignalRUser = null; 
+  isConnecting = false; // Reset the connecting flag
 };
 
 // Helper for invoking hub methods with error handling

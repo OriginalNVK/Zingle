@@ -43,6 +43,87 @@ public class UsersController : ControllerBase
         return users;
     }
 
+    [HttpGet("all-except-admin")]
+    public async Task<ActionResult<List<UserDto>>> GetAllUsersExceptAdmin()
+    {
+        var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        var users = await _userManager.Users
+            .Where(u => u.Id != currentUserId) // Exclude current user
+            .Select(u => new UserDto
+            {
+                Id = u.Id,
+                Username = u.UserName ?? string.Empty,
+                DisplayName = u.DisplayName,
+                AvatarUrl = u.AvatarUrl,
+                IsOnline = u.IsOnline,
+                LastActive = u.LastActive,
+                Bio = u.Bio
+            })
+            .ToListAsync();
+
+        // Filter out admin users
+        var nonAdminUsers = new List<UserDto>();
+        foreach (var user in users)
+        {
+            var appUser = await _userManager.FindByIdAsync(user.Id);
+            if (appUser != null)
+            {
+                var roles = await _userManager.GetRolesAsync(appUser);
+                if (!roles.Contains("Admin"))
+                {
+                    nonAdminUsers.Add(user);
+                }
+            }
+        }
+
+        return nonAdminUsers;
+    }
+
+    [HttpGet("search")]
+    public async Task<ActionResult<List<UserDto>>> SearchUsers([FromQuery] string q)
+    {
+        if (string.IsNullOrWhiteSpace(q))
+        {
+            return new List<UserDto>();
+        }
+
+        var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        var users = await _userManager.Users
+            .Where(u => u.Id != currentUserId && // Exclude current user
+                       (u.UserName != null && u.UserName.Contains(q)) ||
+                       (u.DisplayName != null && u.DisplayName.Contains(q)))
+            .Select(u => new UserDto
+            {
+                Id = u.Id,
+                Username = u.UserName ?? string.Empty,
+                DisplayName = u.DisplayName,
+                AvatarUrl = u.AvatarUrl,
+                IsOnline = u.IsOnline,
+                LastActive = u.LastActive,
+                Bio = u.Bio
+            })
+            .ToListAsync();
+
+        // Filter out admin users
+        var nonAdminUsers = new List<UserDto>();
+        foreach (var user in users)
+        {
+            var appUser = await _userManager.FindByIdAsync(user.Id);
+            if (appUser != null)
+            {
+                var roles = await _userManager.GetRolesAsync(appUser);
+                if (!roles.Contains("Admin"))
+                {
+                    nonAdminUsers.Add(user);
+                }
+            }
+        }
+
+        return nonAdminUsers;
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<UserDto>> GetUser(string id)
     {

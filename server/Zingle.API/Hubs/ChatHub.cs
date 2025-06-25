@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Zingle.API.DTOs;
+using Zingle.API.Data;
+using Zingle.API.Models;
 using System.Security.Claims;
 
 namespace Zingle.API.Hubs;
@@ -9,10 +12,12 @@ namespace Zingle.API.Hubs;
 public class ChatHub : Hub
 {
     private readonly ILogger<ChatHub> _logger;
+    private readonly ApplicationDbContext _context;
 
-    public ChatHub(ILogger<ChatHub> logger)
+    public ChatHub(ILogger<ChatHub> logger, ApplicationDbContext context)
     {
         _logger = logger;
+        _context = context;
     }
 
     public override async Task OnConnectedAsync()
@@ -47,31 +52,92 @@ public class ChatHub : Hub
             return;
         }
 
-        // In a real implementation, we would save the message to the database
-        // and then broadcast it to the recipients
-
-        // For now, just broadcast to the chat group
-        await Clients.Group(messageDto.ChatId).SendAsync("ReceiveMessage", new
+        try
         {
-            Id = Guid.NewGuid().ToString(),
-            messageDto.ChatId,
-            SenderId = userId,
-            SenderUsername = Context.User?.FindFirstValue(ClaimTypes.Name) ?? "Unknown",
-            messageDto.Content,
-            Timestamp = DateTime.UtcNow,
-            messageDto.Type,
-            messageDto.ImageUrl,
-            messageDto.FileUrl,
-            messageDto.FileName,
-            messageDto.FileSize,
-            IsRead = false,
-            Status = "sent"
-        });
+            // Check if user is participant in the chat
+            var chatParticipant = await _context.ChatParticipants
+                .FirstOrDefaultAsync(cp => cp.ChatId == messageDto.ChatId && cp.UserId == userId);
+
+            if (chatParticipant == null)
+            {
+                _logger.LogWarning("User {UserId} attempted to send message to chat {ChatId} without being a participant", userId, messageDto.ChatId);
+                return;
+            }
+
+            // Parse message type
+            if (!Enum.TryParse<MessageType>(messageDto.Type, true, out var messageType))
+            {
+                messageType = MessageType.Text;
+            }
+
+            // Create and save the message
+            var message = new Message
+            {
+                Id = Guid.NewGuid().ToString(),
+                ChatId = messageDto.ChatId,
+                SenderId = userId,
+                Content = messageDto.Content,
+                Type = messageType,
+                ImageUrl = messageDto.ImageUrl,
+                FileUrl = messageDto.FileUrl,
+                FileName = messageDto.FileName,
+                FileSize = messageDto.FileSize,
+                Timestamp = DateTime.UtcNow
+            };
+
+            _context.Messages.Add(message);
+
+            // Update chat's last activity
+            var chat = await _context.Chats.FindAsync(messageDto.ChatId);
+            if (chat != null)
+            {
+                chat.LastActivity = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+
+            // Get sender information
+            var sender = await _context.Users.FindAsync(userId);
+
+            // Broadcast to the chat group
+            await Clients.Group(messageDto.ChatId).SendAsync("ReceiveMessage", new
+            {
+                Id = message.Id,
+                ChatId = message.ChatId,
+                SenderId = message.SenderId,
+                SenderUsername = sender?.UserName ?? "Unknown",
+                Content = message.Content,
+                Timestamp = message.Timestamp,
+                Type = message.Type.ToString(),
+                ImageUrl = message.ImageUrl,
+                FileUrl = message.FileUrl,
+                FileName = message.FileName,
+                FileSize = message.FileSize,
+                IsRead = false, // Frontend expects this field
+                Status = "sent"
+            });
+
+            _logger.LogInformation("Message sent by user {UserId} to chat {ChatId}", userId, messageDto.ChatId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending message from user {UserId} to chat {ChatId}", userId, messageDto.ChatId);
+        }
     }
+
     public async Task SendTypingIndicator(string chatId, bool isTyping)
     {
         var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
+        {
+            return;
+        }
+
+        // Check if user is participant in the chat
+        var chatParticipant = await _context.ChatParticipants
+            .FirstOrDefaultAsync(cp => cp.ChatId == chatId && cp.UserId == userId);
+
+        if (chatParticipant == null)
         {
             return;
         }
@@ -92,16 +158,36 @@ public class ChatHub : Hub
 
     public async Task JoinChat(string chatId)
     {
+        var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return;
+        }
+
+        // Check if user is participant in the chat
+        var chatParticipant = await _context.ChatParticipants
+            .FirstOrDefaultAsync(cp => cp.ChatId == chatId && cp.UserId == userId);
+
+        if (chatParticipant == null)
+        {
+            _logger.LogWarning("User {UserId} attempted to join chat {ChatId} without being a participant", userId, chatId);
+            return;
+        }
+
         await Groups.AddToGroupAsync(Context.ConnectionId, chatId);
-        _logger.LogInformation("User {UserId} joined chat {ChatId}",
-            Context.User?.FindFirstValue(ClaimTypes.NameIdentifier), chatId);
+        _logger.LogInformation("User {UserId} joined chat {ChatId}", userId, chatId);
     }
 
     public async Task LeaveChat(string chatId)
     {
+        var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return;
+        }
+
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, chatId);
-        _logger.LogInformation("User {UserId} left chat {ChatId}",
-            Context.User?.FindFirstValue(ClaimTypes.NameIdentifier), chatId);
+        _logger.LogInformation("User {UserId} left chat {ChatId}", userId, chatId);
     }
 
     public async Task MarkMessageAsRead(string chatId, string messageId)
@@ -112,16 +198,34 @@ public class ChatHub : Hub
             return;
         }
 
-        // In a real implementation, update the database to mark this message as read
-
-        // Notify other users in the chat that the current user has read the message
-        await Clients.GroupExcept(chatId, Context.ConnectionId).SendAsync("MessageRead", new
+        try
         {
-            ChatId = chatId,
-            MessageId = messageId,
-            UserId = userId,
-            ReadAt = DateTime.UtcNow
-        });
+            // Check if user is participant in the chat
+            var chatParticipant = await _context.ChatParticipants
+                .FirstOrDefaultAsync(cp => cp.ChatId == chatId && cp.UserId == userId);
+
+            if (chatParticipant == null)
+            {
+                return;
+            }
+
+            // Update last read time for the participant
+            chatParticipant.LastReadMessageTime = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            // Notify other users in the chat that the current user has read the message
+            await Clients.GroupExcept(chatId, Context.ConnectionId).SendAsync("MessageStatus", new
+            {
+                ChatId = chatId,
+                MessageId = messageId,
+                UserId = userId,
+                Status = "read"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking message {MessageId} as read by user {UserId}", messageId, userId);
+        }
     }
 
     // Call signaling methods

@@ -251,10 +251,18 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       }, currentUser);
     }
     return () => {
-      signalrCallService.disconnectSignalRCallService();
-      resetCallSession(); // Clean up streams and connections
+      // Cleanup function to safely disconnect
+      const cleanup = async () => {
+        try {
+          await signalrCallService.disconnectSignalRCallService();
+        } catch (error) {
+          console.warn('Error during SignalR disconnect cleanup:', error);
+        }
+        resetCallSession(); // Clean up streams and connections
+      };
+      cleanup();
     };
-  }, [currentUser, handleIncomingCall, handleOffer, handleAnswer, handleIceCandidate, handleCallAccepted, handleCallDeclined, handleCallEnded, handleUserBusy, handleCallError, resetCallSession]);
+  }, [currentUser]); // Only depend on currentUser to avoid re-initialization
 
 
   const initiateCall = async (targetUser: User, type: 'video' | 'voice'): Promise<void> => {

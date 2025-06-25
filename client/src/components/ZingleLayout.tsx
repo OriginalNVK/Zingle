@@ -101,26 +101,26 @@ const ZingleLayout: React.FC = () => {
 
 
   return (
-    <div className="flex h-screen antialiased text-gray-800 bg-slate-100 font-sans">
-      <div className={`absolute md:static inset-y-0 left-0 z-30 w-72 bg-white border-r border-gray-200 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col`}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 h-16">
+    <div className="flex h-screen antialiased text-dark-text bg-dark-bg font-sans">
+      <div className={`absolute md:static inset-y-0 left-0 z-30 w-72 bg-dark-card border-r border-dark-border transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col`}>
+        <div className="flex items-center justify-between p-4 border-b border-dark-border h-16">
           <div className="flex items-center space-x-2">
             <ZingleLogo className="w-8 h-8 text-primary-500" />
             <h1 className="text-2xl font-bold text-primary-600">{APP_NAME}</h1>
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-gray-500 hover:text-primary-600">
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-dark-muted hover:text-primary-600">
             <XIcon className="w-6 h-6" />
           </button>
         </div>
         
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-dark-border">
           <div className="flex items-center space-x-3">
             <UserAvatar user={currentUser} size="md" className="border-2 border-primary-500" />
             <div>
-              <p className="text-md font-semibold text-gray-700">{currentUser.username}</p>
-              <p className="text-xs text-gray-500">{currentUser.email}</p>
+              <p className="text-md font-semibold text-dark-text">{currentUser.username}</p>
+              <p className="text-xs text-dark-muted">{currentUser.email}</p>
             </div>
-            <button onClick={handleLogout} title="Logout" className="ml-auto p-2 text-gray-500 hover:text-red-500 rounded-full hover:bg-red-100 transition-colors">
+            <button onClick={handleLogout} title="Logout" className="ml-auto p-2 text-dark-muted hover:text-red-500 rounded-full hover:bg-red-500/10 transition-colors">
               <LogOutIcon />
             </button>
           </div>
@@ -133,7 +133,7 @@ const ZingleLayout: React.FC = () => {
               className={`w-full flex items-center p-3 rounded-lg transition-all duration-200 
                 ${activeMainTab === 'chats'
                   ? 'bg-primary-600/25 text-primary-400 shadow-sm'
-                  : 'text-dark-muted hover:bg-dark-card/80 hover:text-primary-300 active:bg-primary-600/15'
+                  : 'text-dark-muted hover:bg-dark-hover hover:text-primary-300 active:bg-primary-600/15'
                 }`}
             >
               <MessageSquareIcon className="w-5 h-5 mr-3" />
@@ -145,7 +145,7 @@ const ZingleLayout: React.FC = () => {
               className={`w-full flex items-center p-3 rounded-lg transition-all duration-200
                 ${activeMainTab === 'people'
                   ? 'bg-primary-600/25 text-primary-400 shadow-sm'
-                  : 'text-dark-muted hover:bg-dark-card/80 hover:text-primary-300 active:bg-primary-600/15'
+                  : 'text-dark-muted hover:bg-dark-hover hover:text-primary-300 active:bg-primary-600/15'
                 }`}
             >
               <UsersIcon className="w-5 h-5 mr-3" />
@@ -157,7 +157,7 @@ const ZingleLayout: React.FC = () => {
               className={`w-full flex items-center p-3 rounded-lg transition-all duration-200
                 ${activeMainTab === 'settings'
                   ? 'bg-primary-600/25 text-primary-400 shadow-sm'
-                  : 'text-dark-muted hover:bg-dark-card/80 hover:text-primary-300 active:bg-primary-600/15'
+                  : 'text-dark-muted hover:bg-dark-hover hover:text-primary-300 active:bg-primary-600/15'
                 }`}
             >
               <SettingsIcon className="w-5 h-5 mr-3" />
@@ -166,14 +166,14 @@ const ZingleLayout: React.FC = () => {
           </div>
         </nav>
         
-        <div className="mt-auto p-4 border-t border-gray-200">
-             <p className="text-xs text-gray-400 text-center">&copy; {new Date().getFullYear()} {APP_NAME}</p>
+        <div className="mt-auto p-4 border-t border-dark-border">
+             <p className="text-xs text-dark-muted text-center">&copy; {new Date().getFullYear()} {APP_NAME}</p>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-         <div className="md:hidden flex items-center justify-between p-3 border-b bg-white h-16">
-            <button onClick={() => setIsSidebarOpen(true)} className="text-gray-600 hover:text-primary-600">
+         <div className="md:hidden flex items-center justify-between p-3 border-b border-dark-border bg-dark-card h-16">
+            <button onClick={() => setIsSidebarOpen(true)} className="text-dark-muted hover:text-primary-600">
                 <MenuIcon />
             </button>
             <span className="text-lg font-semibold text-primary-600">{activeMainTab.charAt(0).toUpperCase() + activeMainTab.slice(1)}</span>

@@ -43,10 +43,10 @@ const ContactList: React.FC = () => {
       <div className="w-full h-full p-4 border-r border-dark-border bg-dark-bg">
         {[...Array(5)].map((_, i) => (
           <div key={i} className="flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse"></div>
+            <div className="w-12 h-12 rounded-full bg-dark-hover animate-pulse"></div>
             <div className="flex-1">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2 animate-pulse"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+              <div className="h-4 bg-dark-hover rounded w-3/4 mb-2 animate-pulse"></div>
+              <div className="h-3 bg-dark-hover rounded w-1/2 animate-pulse"></div>
             </div>
           </div>
         ))}
@@ -68,7 +68,7 @@ const ContactList: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto">
         {!filteredChats.length && (
-          <div className="text-center p-4 text-gray-500">
+          <div className="text-center p-4 text-dark-muted">
             <p className="text-sm">No chats found</p>
           </div>
         )}
@@ -91,7 +91,7 @@ const ContactList: React.FC = () => {
                 messagePrefix = 'You: ';
               } else if (chat.isGroupChat && chat.lastMessage) {
                 const sender = chat.participants.find(p => p.id === chat.lastMessage?.senderId);
-                messagePrefix = sender ? `${sender.username}: ` : '';
+                messagePrefix = sender ? `${sender.displayName || sender.username}: ` : '';
               }
 
               return (
@@ -109,14 +109,21 @@ const ContactList: React.FC = () => {
                       avatarUrl: chat.avatarUrl,
                       isOnline: false,
                       role: UserRole.USER
-                    } : chatPartner}
+                    } : (chatPartner || {
+                      id: '',
+                      username: 'Unknown',
+                      displayName: 'Unknown',
+                      avatarUrl: undefined,
+                      isOnline: false,
+                      role: UserRole.USER
+                    })}
                     size="md"
                     showStatus={!chat.isGroupChat}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline">
                       <h3 className="font-medium text-dark-text truncate">
-                        {chat.isGroupChat ? chat.name : chatPartner?.username}
+                        {chat.isGroupChat ? chat.name : (chatPartner?.displayName || chatPartner?.username)}
                       </h3>
                       <span className="text-xs text-dark-muted ml-2">
                         {formatTimestamp(chat.lastMessage?.timestamp)}

@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface TypingIndicatorProps {
@@ -20,12 +19,12 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({ usersTyping }) => {
   }
 
   return (
-    <div className="flex items-center space-x-1 text-xs text-gray-500 h-5">
+    <div className="flex items-center space-x-1 text-xs text-dark-muted h-5">
       <span>{text}</span>
       <div className="flex space-x-0.5">
-        <span className="animate-bounce delay-0 duration-1000 inline-block w-1 h-1 bg-gray-500 rounded-full"></span>
-        <span className="animate-bounce delay-150 duration-1000 inline-block w-1 h-1 bg-gray-500 rounded-full"></span>
-        <span className="animate-bounce delay-300 duration-1000 inline-block w-1 h-1 bg-gray-500 rounded-full"></span>
+        <span className="animate-bounce delay-0 duration-1000 inline-block w-1 h-1 bg-dark-muted rounded-full"></span>
+        <span className="animate-bounce delay-150 duration-1000 inline-block w-1 h-1 bg-dark-muted rounded-full"></span>
+        <span className="animate-bounce delay-300 duration-1000 inline-block w-1 h-1 bg-dark-muted rounded-full"></span>
       </div>
     </div>
   );

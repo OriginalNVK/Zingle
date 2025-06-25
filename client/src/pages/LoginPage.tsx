@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import Input from '../components/common/Input'; // Assuming this is styled or we'll adapt
+import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import { ROUTE_PATHS, APP_NAME } from '../constants';
 import { ZingleLogo, GoogleIcon, FacebookIcon } from '../components/icons';
 
 const LoginPage: React.FC = () => {
-  const [emailOrUsername, setEmailOrUsername] = useState('user1'); // Default for quick login
-  const [password, setPassword] = useState('password'); // Default for quick login
+  const [emailOrUsername, setEmailOrUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -31,16 +31,8 @@ const LoginPage: React.FC = () => {
 
   const handleSocialLogin = (provider: string) => {
     console.log(`Attempting login with ${provider}... (Mock)`);
-    // Mock successful social login:
-    // For demo, let's try to log in the first MOCK_USER if it's a social login.
-    // In a real app, this would involve OAuth flow and backend.
-    login( 'Alex Johnson', 'password').then(() => { // using MOCK_CURRENT_USER_ID related user
-         navigate(ROUTE_PATHS.CHAT);
-    }).catch(err => {
-        setError(`Mock social login failed: ${err.message}`);
-    });
+    setError(`${provider} login is not implemented yet. Please use email/password login.`);
   };
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-600 to-indigo-700 flex flex-col justify-center items-center p-4">
@@ -86,9 +78,7 @@ const LoginPage: React.FC = () => {
                 <input id="remember-me" name="remember-me" type="checkbox" className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"/>
                 <label htmlFor="remember-me" className="ml-2 block text-gray-900">Remember me</label>
             </div>
-            {/* <a href="#" className="font-medium text-primary-600 hover:text-primary-500">Forgot password?</a> */}
           </div>
-
 
           <Button type="submit" className="w-full" isLoading={isLoading} disabled={isLoading}>
             Sign In

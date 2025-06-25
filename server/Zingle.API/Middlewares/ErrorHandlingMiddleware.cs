@@ -26,14 +26,22 @@ public class ErrorHandlingMiddleware
         {
             await HandleExceptionAsync(context, ex);
         }
-    }
-
-    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    }    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         _logger.LogError(exception, "An unhandled exception has occurred");
 
+        // Always preserve CORS headers in error responses
+        var origin = context.Request.Headers["Origin"].ToString();
+        if (!string.IsNullOrEmpty(origin))
+        {
+            context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+            context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+        }
+
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError; object response;
+        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+
+        object response;
         if (_env.IsDevelopment())
         {
             response = new

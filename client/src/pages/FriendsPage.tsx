@@ -8,7 +8,7 @@ import Modal from '../components/common/Modal';
 import { useChat } from '../hooks/useChat';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { friendsApi } from '../services/friendsApi';
+import { friendApi } from '../services/api/friendApi';
 import { chatApi } from '../services/api/chatApi';
 import { ROUTE_PATHS } from '../constants';
 
@@ -54,17 +54,13 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, isOpen, onClo
 
 const FriendsPage: React.FC = () => {
   const { currentUser } = useAuth();
-  const [friendRequests, setFriendRequests] = useState<{ 
-    received: { id: string; fromUser: User; createdAt: Date }[]; 
-    sent: { id: string; toUser: User; createdAt: Date }[]; 
-  }>({ 
-    received: [], 
-    sent: [] 
-  });
+  const [friendRequests, setFriendRequests] = useState<{ id: string; fromUser: User; toUser: User; status: string; createdAt: Date; respondedAt?: Date }[]>([]);
   const [friends, setFriends] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isLoadingFriends, setIsLoadingFriends] = useState(true);
   const [isLoadingRequests, setIsLoadingRequests] = useState(true);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [peopleSearchTerm, setPeopleSearchTerm] = useState('');
   const [viewingProfile, setViewingProfile] = useState<User | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -73,7 +69,8 @@ const FriendsPage: React.FC = () => {
   const { setActiveChatId, chats } = useChat();
   const navigate = useNavigate();
 
-  const displayedPeople = peopleSearchTerm ? searchResults : friends;
+  // Show search results if searching, otherwise show all users
+  const displayedPeople = peopleSearchTerm ? searchResults : allUsers;
 
   const isFriend = (userId: string) => friends.some(f => f.id === userId);
   
@@ -88,9 +85,9 @@ const FriendsPage: React.FC = () => {
   const handleAddFriend = async (userId: string) => {
     try {
       setError(null);
-      await friendsApi.sendFriendRequest(userId);
+      await friendApi.sendFriendRequest(userId);
       // Refresh friend requests after sending
-      const requestsData = await friendsApi.getFriendRequests();
+      const requestsData = await friendApi.getFriendRequests();
       setFriendRequests(requestsData);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to send friend request');
@@ -108,7 +105,7 @@ const FriendsPage: React.FC = () => {
       if (existingChat) {
         setActiveChatId(existingChat.id);
       } else {
-        // Create new chat via API in ChatContext
+        // Create new chat via ChatContext
         const newChat = await chatApi.createChat({
           participantIds: [userId],
           isGroupChat: false,
@@ -125,12 +122,12 @@ const FriendsPage: React.FC = () => {
   const handleAcceptFriendRequest = async (requestId: string) => {
     try {
       setError(null);
-      await friendsApi.acceptFriendRequest(requestId);
+      await friendApi.acceptFriendRequest(requestId);
       
       // Refresh both friends and requests lists
       const [friendsData, requestsData] = await Promise.all([
-        friendsApi.getFriends(),
-        friendsApi.getFriendRequests()
+        friendApi.getFriends(),
+        friendApi.getFriendRequests()
       ]);
 
       setFriends(friendsData);
@@ -143,16 +140,17 @@ const FriendsPage: React.FC = () => {
   const handleDeclineFriendRequest = async (requestId: string) => {
     try {
       setError(null);
-      await friendsApi.declineFriendRequest(requestId);
+      await friendApi.declineFriendRequest(requestId);
       
       // Refresh requests list
-      const requestsData = await friendsApi.getFriendRequests();
+      const requestsData = await friendApi.getFriendRequests();
       setFriendRequests(requestsData);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to decline friend request');
     }
   };
-  // Load friends and friend requests
+
+  // Load friends, friend requests, and all users
   useEffect(() => {
     if (!currentUser) return;
 
@@ -160,25 +158,30 @@ const FriendsPage: React.FC = () => {
       try {
         setIsLoadingFriends(true);
         setIsLoadingRequests(true);
+        setIsLoadingUsers(true);
         setError(null);
 
-        const [friendsData, requestsData] = await Promise.all([
-          friendsApi.getFriends(),
-          friendsApi.getFriendRequests()
+        const [friendsData, requestsData, allUsersData] = await Promise.all([
+          friendApi.getFriends(),
+          friendApi.getFriendRequests(),
+          friendApi.getAllUsersExceptAdmin()
         ]);
 
         setFriends(friendsData);
         setFriendRequests(requestsData);
+        setAllUsers(allUsersData);
         
         // Log to verify data structure
         console.log('Friends data:', friendsData);
         console.log('Friend requests data:', requestsData);
+        console.log('All users data:', allUsersData);
       } catch (e) {
         console.error('Error loading data:', e);
         setError(e instanceof Error ? e.message : 'Failed to load data');
       } finally {
         setIsLoadingFriends(false);
         setIsLoadingRequests(false);
+        setIsLoadingUsers(false);
       }
     };
 
@@ -195,7 +198,7 @@ const FriendsPage: React.FC = () => {
     const searchTimeout = setTimeout(async () => {
       try {
         setError(null);
-        const results = await friendsApi.searchUsers(peopleSearchTerm);
+        const results = await friendApi.searchUsers(peopleSearchTerm);
         setSearchResults(results.filter(u => u.id !== currentUser?.id));
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to search users');
@@ -220,9 +223,9 @@ const FriendsPage: React.FC = () => {
             <div className="p-4 text-center text-dark-muted">
               Loading friend requests...
             </div>
-          ) : !friendRequests || !friendRequests.received || friendRequests.received.length === 0 ? (
+          ) : friendRequests.length === 0 ? (
             <p className="text-dark-muted italic">No pending friend requests</p>
-          ) : (            friendRequests.received.map(request => (
+          ) : (            friendRequests.map(request => (
               <div 
                 key={request.id}
                 className="flex items-center p-3 rounded-lg bg-dark-card/50 hover:bg-dark-card transition-all duration-200 shadow-sm hover:shadow-md"
@@ -264,12 +267,12 @@ const FriendsPage: React.FC = () => {
       <div className="flex-1 p-4 overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">
-            {peopleSearchTerm ? 'Search Results' : 'Friends'}
+            {peopleSearchTerm ? 'Search Results' : 'All Users'}
           </h2>
           <div className="relative">
             <Input
               type="text"
-              placeholder="Search people..."
+              placeholder="Search users..."
               value={peopleSearchTerm}
               onChange={(e) => setPeopleSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 bg-dark-card border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 transition-all duration-200"
@@ -279,13 +282,13 @@ const FriendsPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {isLoadingFriends ? (
+          {isLoadingUsers ? (
             <div className="col-span-full p-4 text-center text-dark-muted">
-              Loading people...
+              Loading users...
             </div>
           ) : displayedPeople.length === 0 ? (
             <div className="col-span-full p-4 text-center text-dark-muted">
-              {peopleSearchTerm ? 'No matching users found' : 'No friends yet'}
+              {peopleSearchTerm ? 'No matching users found' : 'No users available'}
             </div>
           ) : (
             displayedPeople.map(person => (

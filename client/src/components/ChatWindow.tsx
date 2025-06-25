@@ -12,7 +12,7 @@ import ChatDetailsSidebar from './ChatDetailsSidebar';
 import { useCall } from '../contexts/CallContext';
 
 const ChatWindow: React.FC = () => {
-  const { activeChatId, messages: allMessages, chats, loadMessages, isLoadingMessages, typingUsers, getChatUserIsTyping } = useChat();
+  const { activeChatId, messages: allMessages, chats, loadMessages, isLoadingMessages, typingUsers, getChatUserIsTyping, error, isSignalRConnected } = useChat();
   const { currentUser } = useAuth();
   const { initiateCall } = useCall();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -42,18 +42,17 @@ const ChatWindow: React.FC = () => {
     .filter(id => id !== currentUser?.id)
     .map(userId => {
       const participant = activeChat?.participants.find(p => p.id === userId);
-      return participant?.username;
+      return participant?.displayName || participant?.username || 'Someone';
     })
     .filter(Boolean) as string[] : [];
 
   useEffect(() => {
     if (activeChatId) {
-      if (!allMessages[activeChatId] || allMessages[activeChatId].length === 0) {
-        loadMessages(activeChatId);
-      }
+      // Always load messages when chat is selected
+      loadMessages(activeChatId);
     }
     setIsDetailsSidebarOpen(false);
-  }, [activeChatId, allMessages, loadMessages]);
+  }, [activeChatId, loadMessages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -67,10 +66,10 @@ const ChatWindow: React.FC = () => {
 
   if (!activeChatId || !activeChat || !currentUser) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-slate-50 relative">
+      <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-dark-bg relative">
         <MessageSquareIcon className="w-24 h-24 text-primary-300 mb-4" />
-        <h3 className="text-xl font-semibold mb-2">No Chat Selected</h3>
-        <p className="text-gray-500">Select a chat from the sidebar to start messaging</p>
+        <h3 className="text-xl font-semibold mb-2 text-dark-text">No Chat Selected</h3>
+        <p className="text-dark-muted">Select a chat from the sidebar to start messaging</p>
       </div>
     );
   }
@@ -88,13 +87,21 @@ const ChatWindow: React.FC = () => {
             />
           )}
           <div>
-            <h2 className="font-semibold">{activeChat.isGroupChat ? activeChat.name : displayUserForHeader?.username}</h2>
+            <h2 className="font-semibold text-dark-text">
+              {activeChat.isGroupChat ? activeChat.name : (displayUserForHeader?.displayName || displayUserForHeader?.username)}
+            </h2>
             {isCurrentlyTyping && typingUserNames.length > 0 && (
               <TypingIndicator usersTyping={typingUserNames} />
             )}
           </div>
         </div>
         <div className="flex items-center space-x-4 text-dark-text">
+          {!isSignalRConnected && (
+            <div className="flex items-center space-x-1 text-yellow-400 text-xs">
+              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+              <span>Offline</span>
+            </div>
+          )}
           <button 
             onClick={() => handleInitiateCall("voice")}
             className="p-2 hover:bg-primary-700/20 rounded-full transition-colors"
@@ -122,6 +129,30 @@ const ChatWindow: React.FC = () => {
           <div className="flex justify-center items-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
           </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 max-w-md">
+              <div className="text-red-400 font-medium mb-2">Error Loading Messages</div>
+              <div className="text-red-300 text-sm mb-3">{error}</div>
+              <button 
+                onClick={() => activeChatId && loadMessages(activeChatId)}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : (!isLoadingMessages && currentChatMessages.length === 0 && !error && activeChatId && allMessages.hasOwnProperty(activeChatId)) ? (
+          // Show empty state when messages have been loaded successfully and there are no messages
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="bg-dark-card border border-dark-border rounded-lg p-8 max-w-md">
+              <MessageSquareIcon className="w-20 h-20 text-primary-400 mx-auto mb-6" />
+              <div className="text-dark-text font-semibold text-lg mb-3">Chưa có tin nhắn nào</div>
+              <div className="text-dark-muted text-sm leading-relaxed">
+                Hãy bắt đầu cuộc trò chuyện nào
+              </div>
+            </div>
+          </div>
         ) : (
           currentChatMessages.map((message, index) => {
             const isLastInGroup = index === currentChatMessages.length - 1 || 
@@ -142,7 +173,7 @@ const ChatWindow: React.FC = () => {
       </div>
       
       {isCurrentlyTyping && typingUserNames.length > 0 && (
-        <div className="px-4 pb-1 h-6 text-sm text-gray-500 italic">
+        <div className="px-4 pb-1 h-6 text-sm text-dark-muted italic">
           <TypingIndicator usersTyping={typingUserNames} />
         </div>
       )}

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using Serilog.Events;
@@ -27,7 +28,20 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+var configuration = builder.Configuration;
 builder.Host.UseSerilog();
+
+// Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowClient", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -64,16 +78,17 @@ builder.Services.AddAuthentication(options =>
     {
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-            builder.Configuration["JwtSettings:TokenKey"])),
+            builder.Configuration["JwtSettings:TokenKey"] ?? throw new InvalidOperationException("JWT Token Key not found in configuration"))),
         ValidateIssuer = false,
         ValidateAudience = false,
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
 
-    // Configure for SignalR authentication
+    // Configure for SignalR authentication and CORS support
     options.Events = new JwtBearerEvents
     {
+        // Handle JWT token in query for SignalR
         OnMessageReceived = context =>
         {
             var accessToken = context.Request.Query["access_token"];
@@ -86,24 +101,34 @@ builder.Services.AddAuthentication(options =>
             }
 
             return Task.CompletedTask;
+        },
+        
+        // Handle authentication failures
+        OnAuthenticationFailed = context =>
+        {
+            Log.Warning("Authentication failed: {Error}", context.Exception.Message);
+            return Task.CompletedTask;
+        },
+        
+        // Ensure CORS headers are preserved with 401 responses
+        OnChallenge = context =>
+        {
+            // CORS headers are applied after OnChallenge
+            // Ensure we don't modify the response if it's already started
+            if (!context.Response.HasStarted)
+            {
+                context.Response.Headers["Access-Control-Allow-Origin"] = 
+                    builder.Configuration["ClientUrl"] ?? "http://localhost:5173";
+                context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+            }
+            
+            return Task.CompletedTask;
         }
     };
 });
 
 // Add authorization
 builder.Services.AddAuthorization();
-
-// Add CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("CorsPolicy", policy =>
-    {
-        policy.WithOrigins("http://localhost:5173") // Frontend URL
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
-    });
-});
 
 // Add SignalR
 builder.Services.AddSignalR();
@@ -144,8 +169,30 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-// Add error handling middleware
-app.UseMiddleware<Zingle.API.Middlewares.ErrorHandlingMiddleware>();
+// IMPORTANT: CORS middleware must be the absolute first middleware in the pipeline
+// This ensures CORS headers are sent even if other middleware short-circuits the pipeline
+app.UseCors();
+
+// Enhanced logging for CORS requests
+app.Use(async (context, next) => {
+    if (context.Request.Method == "OPTIONS")
+    {
+        Log.Information("CORS Preflight request: Path={Path}, Origin={Origin}",
+            context.Request.Path,
+            context.Request.Headers["Origin"]);
+    }
+    
+    context.Response.OnStarting(() => {
+        if (!context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"))
+        {
+            Log.Warning("CORS headers missing in response for {Method} {Path}", 
+                context.Request.Method, context.Request.Path);
+        }
+        return Task.CompletedTask;
+    });
+    
+    await next.Invoke();
+});
 
 if (app.Environment.IsDevelopment())
 {
@@ -153,9 +200,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Add error handling middleware after CORS
+app.UseMiddleware<Zingle.API.Middlewares.ErrorHandlingMiddleware>();
 
-app.UseCors("CorsPolicy");
+// HTTPS redirection should come after CORS and error handling
+app.UseHttpsRedirection();
 
 // Setup static file serving for uploads folder
 app.UseStaticFiles();
@@ -172,6 +221,11 @@ if (!Directory.Exists(uploadsFilePath))
 {
     Directory.CreateDirectory(uploadsFilePath);
 }
+
+app.UseRouting();
+
+// Use CORS policy
+app.UseCors("AllowClient");
 
 app.UseAuthentication();
 app.UseAuthorization();

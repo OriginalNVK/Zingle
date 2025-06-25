@@ -4,17 +4,17 @@ export enum UserRole {
 }
 
 export enum MessageType {
-  TEXT = 0,
-  IMAGE = 1,
-  FILE = 2,
-  SYSTEM = 3
+  TEXT = 'text',
+  IMAGE = 'image',
+  FILE = 'file',
+  SYSTEM = 'system'
 }
 
 export enum FriendRequestStatus {
-  PENDING = 'PENDING',
-  ACCEPTED = 'ACCEPTED',
-  DECLINED = 'DECLINED',
-  BLOCKED = 'BLOCKED'
+  PENDING = 'Pending',
+  ACCEPTED = 'Accepted',
+  DECLINED = 'Declined',
+  BLOCKED = 'Blocked'
 }
 
 export enum CallState {
@@ -30,13 +30,13 @@ export enum CallState {
 export interface User {
   id: string;
   username: string;
-  displayName: string;
+  displayName?: string;
   email?: string;
   avatarUrl?: string;
   isOnline: boolean;
   lastActive?: Date;
   bio?: string;
-  role: UserRole;
+  role?: string;
   isFriend?: boolean;
 }
 
@@ -49,10 +49,20 @@ export interface RegisterRequest {
   email: string;
   username: string;
   password: string;
+  displayName?: string;
 }
 
-export interface AuthResponse extends User {
+export interface AuthResponse {
+  id: string;
+  username: string;
+  displayName?: string;
+  email?: string;
+  avatarUrl?: string;
+  isOnline: boolean;
+  lastActive?: Date;
+  bio?: string;
   token: string;
+  role: string;
 }
 
 export interface Chat {
@@ -71,10 +81,12 @@ export interface Message {
   id: string;
   chatId: string;
   senderId: string;
+  senderUsername?: string;
+  senderAvatarUrl?: string;
   content: string;
   timestamp: Date;
   isRead: boolean;
-  type: MessageType;
+  type: string;
   imageUrl?: string;
   fileUrl?: string;
   fileName?: string;
@@ -99,7 +111,7 @@ export interface FriendRequest {
   id: string;
   fromUser: User;
   toUser: User;
-  status: FriendRequestStatus;
+  status: string;
   createdAt: Date;
   respondedAt?: Date;
 }
