@@ -28,23 +28,25 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
-var configuration = builder.Configuration;
 builder.Host.UseSerilog();
-
-// Add CORS policy
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowClient", policy =>
-    {
-        policy.WithOrigins("http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
-});
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+// Add CORS configuration BEFORE other service configurations
+var clientUrl = builder.Configuration["ClientUrl"] ?? "http://localhost:5173";
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy
+            .WithOrigins(clientUrl)
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials()
+            .WithExposedHeaders("Content-Disposition");
+    });
+});
 
 // Add DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -221,11 +223,6 @@ if (!Directory.Exists(uploadsFilePath))
 {
     Directory.CreateDirectory(uploadsFilePath);
 }
-
-app.UseRouting();
-
-// Use CORS policy
-app.UseCors("AllowClient");
 
 app.UseAuthentication();
 app.UseAuthorization();

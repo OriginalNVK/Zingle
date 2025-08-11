@@ -272,7 +272,7 @@ namespace Zingle.API.Migrations
 
                     b.HasIndex("RecipientId");
 
-                    b.ToTable("CallLogs");
+                    b.ToTable("CallLogs", (string)null);
                 });
 
             modelBuilder.Entity("Zingle.API.Models.Chat", b =>
@@ -303,7 +303,7 @@ namespace Zingle.API.Migrations
 
                     b.HasIndex("AppUserId");
 
-                    b.ToTable("Chats");
+                    b.ToTable("Chats", (string)null);
                 });
 
             modelBuilder.Entity("Zingle.API.Models.ChatParticipant", b =>
@@ -337,7 +337,7 @@ namespace Zingle.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("ChatParticipants");
+                    b.ToTable("ChatParticipants", (string)null);
                 });
 
             modelBuilder.Entity("Zingle.API.Models.FriendRequest", b =>
@@ -368,7 +368,7 @@ namespace Zingle.API.Migrations
 
                     b.HasIndex("ToUserId");
 
-                    b.ToTable("FriendRequests");
+                    b.ToTable("FriendRequests", (string)null);
                 });
 
             modelBuilder.Entity("Zingle.API.Models.Friendship", b =>
@@ -393,7 +393,7 @@ namespace Zingle.API.Migrations
 
                     b.HasIndex("User2Id");
 
-                    b.ToTable("Friendships");
+                    b.ToTable("Friendships", (string)null);
                 });
 
             modelBuilder.Entity("Zingle.API.Models.Message", b =>
@@ -437,7 +437,7 @@ namespace Zingle.API.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("Messages");
+                    b.ToTable("Messages", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

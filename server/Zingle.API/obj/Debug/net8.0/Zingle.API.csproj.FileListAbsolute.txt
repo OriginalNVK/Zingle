@@ -1,4 +1,3 @@
-D:\Work\ProfessionalProject\Zingle-App\server\Zingle.API\bin\Debug\net8.0\appsettings.Development.json
 D:\Work\ProfessionalProject\Zingle-App\server\Zingle.API\bin\Debug\net8.0\appsettings.json
 D:\Work\ProfessionalProject\Zingle-App\server\Zingle.API\bin\Debug\net8.0\Zingle.API.staticwebassets.endpoints.json
 D:\Work\ProfessionalProject\Zingle-App\server\Zingle.API\bin\Debug\net8.0\Zingle.API.exe

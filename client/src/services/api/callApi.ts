@@ -1,6 +1,6 @@
 import api from './axiosConfig';
-import type { Call } from '../types';
-import { CallType } from '../types';
+import type { Call } from '../../types';
+import { CallType } from '../../types';
 
 export const callApi = {
     initiateCall: async (recipientId: string, type: CallType): Promise<Call> => {

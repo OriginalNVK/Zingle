@@ -1,9 +1,9 @@
 import api from './axiosConfig';
-import type { AuthRequest, RegisterRequest, AuthResponse, User } from '../types';
+import type { LoginRequest, RegisterRequest, AuthResponse, User } from '../../types';
 import { tokenStorage } from '../../utils/tokenStorage';
 
 export const authApi = {
-    login: async (data: AuthRequest): Promise<AuthResponse> => {
+    login: async (data: LoginRequest): Promise<AuthResponse> => {
         const response = await api.post<AuthResponse>('/auth/login', data);
         if (response.data.token) {
             tokenStorage.setToken(response.data.token);
