@@ -59,23 +59,23 @@ const UserProfilePage: React.FC = () => {
   };
 
   if (authLoading || !currentUser) {
-    return <div className="text-center p-10">Loading profile...</div>;
+    return <div className="text-center p-10 text-dark-text bg-dark-bg">Loading profile...</div>;
   }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 h-full overflow-y-auto bg-dark-bg text-dark-text">
-      <h1 className="text-2xl font-semibold mb-6">Settings</h1>
+      <h1 className="text-2xl font-semibold mb-6 text-dark-text">Settings</h1>
       
       {statusMessage && (
-        <p className="mb-4 text-sm text-primary-400 bg-primary-600/10 p-3 rounded-md">
+        <p className="mb-4 text-sm text-primary-400 bg-primary-600/10 p-3 rounded-md border border-primary-600/20">
           {statusMessage}
         </p>
       )}
 
       <div className="max-w-2xl mx-auto space-y-8">
         <section>
-          <h2 className="text-xl font-semibold mb-4">Your Profile</h2>
-          <form onSubmit={handleSubmit} className="space-y-6 bg-dark-card/50 p-6 rounded-lg shadow-sm">
+          <h2 className="text-xl font-semibold mb-4 text-dark-text">Your Profile</h2>
+          <form onSubmit={handleSubmit} className="space-y-6 bg-dark-card/50 p-6 rounded-lg shadow-sm border border-dark-border">
             <div className="flex flex-col items-center space-y-4">
               <UserAvatar user={{...currentUser, ...profileData} as User} size="xl" />
               {isEditing && (
@@ -151,8 +151,8 @@ const UserProfilePage: React.FC = () => {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-4">Account Actions</h2>
-          <div className="bg-dark-card/50 p-6 rounded-lg shadow-sm space-y-3">
+          <h2 className="text-xl font-semibold mb-4 text-dark-text">Account Actions</h2>
+          <div className="bg-dark-card/50 p-6 rounded-lg shadow-sm space-y-3 border border-dark-border">
                <Button 
                   variant="danger" 
                   onClick={logout}
@@ -164,8 +164,8 @@ const UserProfilePage: React.FC = () => {
         </section>
         
         <section>
-          <h2 className="text-xl font-semibold mb-4">Developer Options</h2>
-          <div className="bg-dark-card/50 p-6 rounded-lg shadow-sm">
+          <h2 className="text-xl font-semibold mb-4 text-dark-text">Developer Options</h2>
+          <div className="bg-dark-card/50 p-6 rounded-lg shadow-sm border border-dark-border">
               {layoutContext?.MOCK_simulateIncomingCall_DEPRECATED && (
                    <Button 
                       onClick={layoutContext.MOCK_simulateIncomingCall_DEPRECATED} 

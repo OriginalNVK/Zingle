@@ -11,11 +11,14 @@ import {
   LogOutIcon,
   MenuIcon,
   XIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from './icons';
 import { useCall } from '../contexts/CallContext'; // Import useCall
 import { CallState } from '../types'; // Import CallState
 import type { User as UserType } from '../types'; // Import User as type
 import { getDisplayName } from '../utils/displayName';
+import CallModal from './CallModal';
 
 // Define context type for Outlet
 interface ZingleOutletContext {
@@ -30,6 +33,7 @@ const ZingleLayout: React.FC = () => {
   const { callSession, answerCall, declineCall, incomingCallDetails, clearIncomingCallDetails } = useCall(); // Use CallContext
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeMainTab, setActiveMainTab] = useState('chats'); // 'chats', 'people', 'settings'
   
   // The old mock state for call notification is now handled by CallContext's incomingCallDetails
@@ -65,6 +69,10 @@ const ZingleLayout: React.FC = () => {
     setActiveMainTab(tab);
     navigate(path);
   };
+
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
   
   const handleAcceptCall = async () => {
     try {
@@ -97,31 +105,42 @@ const ZingleLayout: React.FC = () => {
     return null; 
   }
 
-  const showCallNotification = callSession.state === CallState.RECEIVING_INCOMING && incomingCallDetails !== null;
-  const incomingCallUser = incomingCallDetails?.initiator;
-
-
   return (
     <div className="flex h-screen antialiased text-dark-text bg-dark-bg font-sans">
-      <div className={`absolute md:static inset-y-0 left-0 z-30 w-72 bg-dark-card border-r border-dark-border transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col`}>
+      <div className={`absolute md:static inset-y-0 left-0 z-30 bg-dark-card border-r border-dark-border transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col ${isSidebarCollapsed ? 'w-16' : 'w-72'}`}>
         <div className="flex items-center justify-between p-4 border-b border-dark-border h-16">
           <div className="flex items-center space-x-2">
             <ZingleLogo className="w-8 h-8 text-primary-500" />
-            <h1 className="text-2xl font-bold text-primary-600">{APP_NAME}</h1>
+            {!isSidebarCollapsed && (
+              <h1 className="text-2xl font-bold text-primary-600">{APP_NAME}</h1>
+            )}
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-dark-muted hover:text-primary-600">
-            <XIcon className="w-6 h-6" />
-          </button>
+          <div className="flex items-center space-x-2">
+            {!isSidebarCollapsed && (
+              <button 
+                onClick={toggleSidebarCollapse}
+                className="hidden md:flex text-dark-muted hover:text-primary-600 p-1 rounded"
+                title="Collapse sidebar"
+              >
+                <ChevronLeftIcon className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-dark-muted hover:text-primary-600">
+              <XIcon className="w-6 h-6" />
+            </button>
+          </div>
         </div>
         
         <div className="p-4 border-b border-dark-border">
           <div className="flex items-center space-x-3">
             <UserAvatar user={currentUser} size="md" className="border-2 border-primary-500" />
-            <div>
-              <p className="text-md font-semibold text-dark-text">{getDisplayName(currentUser)}</p>
-              <p className="text-xs text-dark-muted">{currentUser.email}</p>
-            </div>
-            <button onClick={handleLogout} title="Logout" className="ml-auto p-2 text-dark-muted hover:text-red-500 rounded-full hover:bg-red-500/10 transition-colors">
+            {!isSidebarCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-md font-semibold text-dark-text truncate">{getDisplayName(currentUser)}</p>
+                <p className="text-xs text-dark-muted truncate">{currentUser.email}</p>
+              </div>
+            )}
+            <button onClick={handleLogout} title="Logout" className="p-2 text-dark-muted hover:text-red-500 rounded-full hover:bg-red-500/10 transition-colors">
               <LogOutIcon />
             </button>
           </div>
@@ -136,9 +155,10 @@ const ZingleLayout: React.FC = () => {
                   ? 'bg-primary-600/25 text-primary-400 shadow-sm'
                   : 'text-dark-muted hover:bg-dark-hover hover:text-primary-300 active:bg-primary-600/15'
                 }`}
+              title={isSidebarCollapsed ? 'Chats' : undefined}
             >
-              <MessageSquareIcon className="w-5 h-5 mr-3" />
-              <span className="font-medium">Chats</span>
+              <MessageSquareIcon className="w-5 h-5" />
+              {!isSidebarCollapsed && <span className="font-medium ml-3">Chats</span>}
             </button>
 
             <button
@@ -148,9 +168,10 @@ const ZingleLayout: React.FC = () => {
                   ? 'bg-primary-600/25 text-primary-400 shadow-sm'
                   : 'text-dark-muted hover:bg-dark-hover hover:text-primary-300 active:bg-primary-600/15'
                 }`}
+              title={isSidebarCollapsed ? 'People' : undefined}
             >
-              <UsersIcon className="w-5 h-5 mr-3" />
-              <span className="font-medium">People</span>
+              <UsersIcon className="w-5 h-5" />
+              {!isSidebarCollapsed && <span className="font-medium ml-3">People</span>}
             </button>
 
             <button
@@ -160,15 +181,18 @@ const ZingleLayout: React.FC = () => {
                   ? 'bg-primary-600/25 text-primary-400 shadow-sm'
                   : 'text-dark-muted hover:bg-dark-hover hover:text-primary-300 active:bg-primary-600/15'
                 }`}
+              title={isSidebarCollapsed ? 'Settings' : undefined}
             >
-              <SettingsIcon className="w-5 h-5 mr-3" />
-              <span className="font-medium">Settings</span>
+              <SettingsIcon className="w-5 h-5" />
+              {!isSidebarCollapsed && <span className="font-medium ml-3">Settings</span>}
             </button>
           </div>
         </nav>
         
         <div className="mt-auto p-4 border-t border-dark-border">
-             <p className="text-xs text-dark-muted text-center">&copy; {new Date().getFullYear()} {APP_NAME}</p>
+          {!isSidebarCollapsed && (
+            <p className="text-xs text-dark-muted text-center">&copy; {new Date().getFullYear()} {APP_NAME}</p>
+          )}
         </div>
       </div>
 
@@ -180,35 +204,52 @@ const ZingleLayout: React.FC = () => {
             <span className="text-lg font-semibold text-primary-600">{activeMainTab.charAt(0).toUpperCase() + activeMainTab.slice(1)}</span>
             <div className="w-6"></div>
         </div>
+
+        {/* Sidebar collapse toggle button for desktop */}
+        {isSidebarCollapsed && (
+          <div className="hidden md:block absolute left-16 top-1/2 transform -translate-y-1/2 z-20">
+            <button
+              onClick={toggleSidebarCollapse}
+              className="bg-dark-card border border-dark-border rounded-r-lg p-2 text-dark-muted hover:text-primary-600 hover:bg-dark-hover transition-colors"
+              title="Expand sidebar"
+            >
+              <ChevronRightIcon className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         
          <Outlet context={outletContextValue} />
       </div>
 
-        {showCallNotification && incomingCallUser && (
-             <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-[100]"> {/* Increased z-index */}
-                <div className="bg-gradient-to-br from-primary-500 to-indigo-600 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center text-white transform transition-all animate-pulse">
-                    <UserAvatar user={incomingCallUser as UserType} size="xl" className="mx-auto mb-3 border-4 border-primary-300 ring-2 ring-white"/>
-                    <h3 className="text-2xl font-bold">Incoming {incomingCallDetails?.type} Call</h3>
-                    <p className="text-lg mb-6">from <span className="font-semibold">{getDisplayName(incomingCallUser)}</span></p>
-                    <div className="flex justify-around mt-4">
-                        <button 
-                            onClick={handleDeclineCall} 
-                            className="px-8 py-3 bg-red-500 hover:bg-red-600 text-white rounded-full font-semibold text-lg shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-300"
-                            aria-label="Decline call"
-                        >
-                            Decline
-                        </button>
-                        <button 
-                            onClick={handleAcceptCall} 
-                            className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white rounded-full font-semibold text-lg shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-300"
-                            aria-label="Accept call"
-                        >
-                            Accept
-                        </button>
-                    </div>
-                </div>
+      {/* Call Modal - Renders when call is ongoing */}
+      <CallModal />
+
+      {/* Incoming Call Notification */}
+      {callSession.state === CallState.RECEIVING_INCOMING && incomingCallDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-[100]">
+          <div className="bg-gradient-to-br from-primary-500 to-indigo-600 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center text-white transform transition-all animate-pulse">
+            <UserAvatar user={incomingCallDetails.initiator} size="xl" className="mx-auto mb-3 border-4 border-primary-300 ring-2 ring-white"/>
+            <h3 className="text-2xl font-bold">Incoming {incomingCallDetails.type} Call</h3>
+            <p className="text-lg mb-6">from <span className="font-semibold">{getDisplayName(incomingCallDetails.initiator)}</span></p>
+            <div className="flex justify-around mt-4">
+              <button 
+                onClick={handleDeclineCall} 
+                className="px-8 py-3 bg-red-500 hover:bg-red-600 text-white rounded-full font-semibold text-lg shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-300"
+                aria-label="Decline call"
+              >
+                Decline
+              </button>
+              <button 
+                onClick={handleAcceptCall} 
+                className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white rounded-full font-semibold text-lg shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-300"
+                aria-label="Accept call"
+              >
+                Accept
+              </button>
             </div>
-        )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

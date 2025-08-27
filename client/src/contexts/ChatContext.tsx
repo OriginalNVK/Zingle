@@ -22,6 +22,7 @@ interface ChatContextType {
   isSignalRConnected: boolean;
   error: string | null;
   resetLoadedChats: () => void;
+  reconnectSignalR: () => Promise<void>;
 }
 
 export const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -43,6 +44,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [isSignalRConnected, setIsSignalRConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadedChats, setLoadedChats] = useState<Set<string>>(new Set());
+  const [connectionRetryCount, setConnectionRetryCount] = useState(0);
+  const maxRetryAttempts = 5;
 
   // Initialize SignalR when user is authenticated
   useEffect(() => {
@@ -53,16 +56,35 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         try {
           console.log('Initializing SignalR chat service...');
           service = new SignalRChatService();
-          // Try to start SignalR but don't fail if it doesn't work
-          try {
-            await service.start();
-            console.log('SignalR chat service initialized successfully');
-            setIsSignalRConnected(true);
-          } catch (signalRError) {
-            console.warn('SignalR initialization failed, continuing without real-time features:', signalRError);
-            setIsSignalRConnected(false);
-            // Still set the service so other parts of the app can work
+          
+          // Try to start SignalR with retry logic
+          let connected = false;
+          for (let attempt = 0; attempt < maxRetryAttempts; attempt++) {
+            try {
+              await service.start();
+              console.log('SignalR chat service initialized successfully');
+              setIsSignalRConnected(true);
+              setConnectionRetryCount(0);
+              connected = true;
+              break;
+            } catch (signalRError) {
+              console.warn(`SignalR initialization attempt ${attempt + 1} failed:`, signalRError);
+              setConnectionRetryCount(attempt + 1);
+              
+              if (attempt < maxRetryAttempts - 1) {
+                // Wait before retry with exponential backoff
+                const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+                await new Promise(resolve => setTimeout(resolve, delay));
+              }
+            }
           }
+          
+          if (!connected) {
+            console.warn('SignalR initialization failed after all attempts, continuing without real-time features');
+            setIsSignalRConnected(false);
+            setError('Không thể kết nối tới máy chủ real-time. Một số tính năng có thể không hoạt động.');
+          }
+          
           setChatService(service);
 
           const messageCallback = (message: Message) => {
@@ -135,6 +157,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           console.error('Failed to initialize chat service:', error);
           setChatService(null);
           setIsSignalRConnected(false);
+          setError('Không thể khởi tạo dịch vụ chat. Vui lòng thử lại sau.');
         }
       }
     };
@@ -147,7 +170,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         setIsSignalRConnected(false);
       }
     };
-  }, [currentUser]);
+  }, [currentUser, maxRetryAttempts]);
 
   // Load initial chats
   useEffect(() => {
@@ -162,6 +185,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         setChats(fetchedChats);
       } catch (error) {
         console.error('Failed to load chats:', error);
+        setError('Không thể tải danh sách chat. Vui lòng thử lại sau.');
       } finally {
         setIsLoadingChats(false);
       }
@@ -180,6 +204,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       setError(null);
       setActiveChatId(null);
       setTypingUsers({});
+      setConnectionRetryCount(0);
     }
   }, [currentUser]);
 
@@ -236,8 +261,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           errorMessage = error.message;
         }
       }
-      // You can add a toast notification here or use a state to show error
-      console.error('User-friendly error message:', errorMessage);
       setError(errorMessage);
     } finally {
       setIsLoadingMessages(false);
@@ -333,6 +356,22 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     setLoadedChats(new Set());
   };
 
+  const reconnectSignalR = async () => {
+    if (chatService) {
+      try {
+        setError(null);
+        await chatService.start();
+        setIsSignalRConnected(true);
+        setConnectionRetryCount(0);
+        console.log('SignalR reconnected successfully');
+      } catch (error) {
+        console.error('Failed to reconnect SignalR:', error);
+        setError('Không thể kết nối lại tới máy chủ real-time.');
+        setIsSignalRConnected(false);
+      }
+    }
+  };
+
   // Ensure context is always available with default values
   const contextValue: ChatContextType = {
     chats,
@@ -349,7 +388,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     getChatUserIsTyping,
     isSignalRConnected,
     error,
-    resetLoadedChats
+    resetLoadedChats,
+    reconnectSignalR
   };
 
   // Ensure ChatProvider always renders even if there are errors
@@ -377,7 +417,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       getChatUserIsTyping: () => false,
       isSignalRConnected: false,
       error: null,
-      resetLoadedChats: () => {}
+      resetLoadedChats: () => {},
+      reconnectSignalR: async () => {}
     };
     return (
       <ChatContext.Provider value={fallbackContext}>

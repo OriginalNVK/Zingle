@@ -102,7 +102,7 @@ const LoginPage: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Button variant="secondary" onClick={() => handleSocialLogin('Google')} className="w-full">
-            <GoogleIcon className="text-red-500 mr-2 w-5 h-5" /> Google
+            <img src="../public/gg.jpg" className="text-red-500 mr-2 w-5 h-5 rounded-full bg-transparent" alt="Google logo" /> Google
           </Button>
           <Button variant="secondary" onClick={() => handleSocialLogin('Facebook')} className="w-full">
             <FacebookIcon className="text-blue-600 mr-2 w-5 h-5" /> Facebook

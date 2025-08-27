@@ -3,6 +3,7 @@ import type { User } from '../types';
 import UserAvatar from '../components/UserAvatar';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
+import CallButton from '../components/CallButton';
 import { SearchIcon as SearchIconZingle, UserPlusIcon, MessageSquareIcon as MessageIconZingle } from '../components/icons';
 import Modal from '../components/common/Modal';
 import { useChat } from '../hooks/useChat';
@@ -36,6 +37,13 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, isOpen, onClo
         {user.bio && <p className="text-gray-600 mb-4 text-sm">{user.bio}</p>}
         
         <div className="space-y-2 mt-4">
+          {/* Call Buttons - Only show for friends */}
+          {isFriend(user.id) && (
+            <div className="flex justify-center space-x-2 mb-3">
+              <CallButton targetUser={user} />
+            </div>
+          )}
+          
           {!isFriend(user.id) && (
             <Button onClick={() => { onAddFriend(user.id); onClose();}} variant="primary" className="w-full">
               <UserPlusIcon className="w-4 h-4 mr-2"/> Add Friend
@@ -243,6 +251,10 @@ const FriendsPage: React.FC = () => {
                   </p>
                 </div>
                 <div className="flex items-center space-x-2 ml-4">
+                  {/* Call Buttons - Only show for accepted friends */}
+                  {isFriend(request.fromUser.id) && (
+                    <CallButton targetUser={request.fromUser} />
+                  )}
                   <Button
                     onClick={() => handleAcceptFriendRequest(request.id)}
                     variant="primary"
@@ -307,16 +319,19 @@ const FriendsPage: React.FC = () => {
                 </div>
                 <div className="ml-3">
                   {isFriend(person.id) ? (
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSendMessage(person.id);
-                      }}
-                      variant="primary"
-                      className="text-sm py-1.5 px-3 hover:bg-primary-500/90 transition-colors duration-200"
-                    >
-                      Message
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      <CallButton targetUser={person} />
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSendMessage(person.id);
+                        }}
+                        variant="primary"
+                        className="text-sm py-1.5 px-3 hover:bg-primary-500/90 transition-colors duration-200"
+                      >
+                        Message
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       onClick={(e) => {

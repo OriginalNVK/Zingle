@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { useChat } from '../hooks/useChat';
 import { useAuth } from '../hooks/useAuth';
+import { useChat } from '../hooks/useChat';
+import { SearchIcon, UserPlusIcon, FilterIcon, PhoneIcon } from './icons';
 import UserAvatar from './UserAvatar';
-import { SearchIcon } from './icons';
 import Input from './common/Input';
+import Modal from './common/Modal';
+import CallButton from './CallButton';
 import { MessageType, UserRole } from '../types';
 import { getDisplayName } from '../utils/displayName';
 
@@ -11,12 +13,25 @@ const ContactList: React.FC = () => {
   const { chats, setActiveChatId, activeChatId, isLoadingChats, getChatUserIsTyping } = useChat();
   const { currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 
   const filteredChats = chats.filter(chat => {
     const chatPartner = chat.isGroupChat ? null : chat.participants.find(p => p.id !== currentUser?.id);
     const nameToSearch = chat.isGroupChat ? chat.name : (chatPartner ? getDisplayName(chatPartner) : chat.name);
-    return nameToSearch.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = nameToSearch.toLowerCase().includes(searchTerm.toLowerCase()) ||
            (chat.lastMessage && chat.lastMessage.content.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Apply filters
+    if (selectedFilters.length === 0) return matchesSearch;
+    
+    let matchesFilters = false;
+    if (selectedFilters.includes('unread') && chat.unreadCount > 0) matchesFilters = true;
+    if (selectedFilters.includes('not_in_contacts') && !chat.isGroupChat) matchesFilters = true;
+    if (selectedFilters.includes('groups') && chat.isGroupChat) matchesFilters = true;
+    
+    return matchesSearch && matchesFilters;
   });
 
   const formatTimestamp = (date?: Date) => {
@@ -39,6 +54,14 @@ const ContactList: React.FC = () => {
     return then.toLocaleDateString();
   };
 
+  const handleFilterChange = (filter: string) => {
+    setSelectedFilters(prev => 
+      prev.includes(filter) 
+        ? prev.filter(f => f !== filter)
+        : [...prev, filter]
+    );
+  };
+
   if (isLoadingChats) {
     return (
       <div className="w-full h-full p-4 border-r border-dark-border bg-dark-bg">
@@ -57,9 +80,35 @@ const ContactList: React.FC = () => {
 
   return (
     <div className="w-full h-full flex flex-col bg-dark-bg border-r border-dark-border">
+      {/* Header */}
       <div className="p-4 border-b border-dark-border">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-dark-text">Đoạn chat</h2>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setShowAddUserModal(true)}
+              className="p-2 text-dark-muted hover:text-primary-600 hover:bg-primary-600/10 rounded-full transition-colors"
+              title="Tìm kiếm người dùng mới"
+            >
+              <UserPlusIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setShowFilterModal(true)}
+              className={`p-2 rounded-full transition-colors ${
+                selectedFilters.length > 0 
+                  ? 'text-primary-600 bg-primary-600/20' 
+                  : 'text-dark-muted hover:text-primary-600 hover:bg-primary-600/10'
+              }`}
+              title="Lọc đoạn chat"
+            >
+              <FilterIcon className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+        
+        {/* Search Bar */}
         <Input
-          placeholder="Search chats..."
+          placeholder="Tìm kiếm người dùng và nhóm"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           icon={<SearchIcon className="w-5 h-5" />}
@@ -67,10 +116,11 @@ const ContactList: React.FC = () => {
         />
       </div>
 
+      {/* Chat List */}
       <div className="flex-1 overflow-y-auto">
         {!filteredChats.length && (
           <div className="text-center p-4 text-dark-muted">
-            <p className="text-sm">No chats found</p>
+            <p className="text-sm">Không tìm thấy đoạn chat nào</p>
           </div>
         )}
 
@@ -89,7 +139,7 @@ const ContactList: React.FC = () => {
 
               let messagePrefix = '';
               if (chat.lastMessage?.senderId === currentUser?.id && chat.lastMessage?.type !== MessageType.SYSTEM) {
-                messagePrefix = 'You: ';
+                messagePrefix = 'Bạn: ';
               } else if (chat.isGroupChat && chat.lastMessage) {
                 const sender = chat.participants.find(p => p.id === chat.lastMessage?.senderId);
                 messagePrefix = sender ? `${getDisplayName(sender)}: ` : '';
@@ -132,18 +182,128 @@ const ContactList: React.FC = () => {
                     </div>
                     <p className="text-sm truncate">
                       {isTyping ? (
-                        <span className="text-primary-400">typing...</span>
+                        <span className="text-primary-400">đang nhập...</span>
                       ) : (
                         <span className="text-dark-muted">{messagePrefix + lastMessageText}</span>
                       )}
                     </p>
+                    {chat.unreadCount > 0 && (
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs text-dark-muted">
+                          {chat.unreadCount} tin nhắn chưa đọc
+                        </span>
+                      </div>
+                    )}
                   </div>
+                  
+                  {/* Call Buttons - Only show for individual chats, not group chats */}
+                  {!chat.isGroupChat && chatPartner && (
+                    <CallButton targetUser={chatPartner} />
+                  )}
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Add User Modal */}
+      <Modal
+        isOpen={showAddUserModal}
+        onClose={() => setShowAddUserModal(false)}
+        title="Tìm kiếm người dùng mới"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-dark-text">
+              Tìm kiếm theo số điện thoại
+            </label>
+            <Input
+              placeholder="Nhập số điện thoại"
+              icon={<PhoneIcon className="w-5 h-5" />}
+              className="bg-dark-card"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-dark-text">
+              Lập nhóm mới
+            </label>
+            <Input
+              placeholder="Tên nhóm"
+              className="bg-dark-card"
+            />
+            <Input
+              placeholder="Mô tả nhóm (tùy chọn)"
+              className="bg-dark-card"
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              onClick={() => setShowAddUserModal(false)}
+              className="px-4 py-2 text-dark-muted hover:text-dark-text transition-colors"
+            >
+              Hủy
+            </button>
+            <button className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors">
+              Tìm kiếm
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Filter Modal */}
+      <Modal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        title="Lọc đoạn chat"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <label className="flex items-center space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedFilters.includes('unread')}
+                onChange={() => handleFilterChange('unread')}
+                className="rounded border-dark-border text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-dark-text">Chưa đọc</span>
+            </label>
+            
+            <label className="flex items-center space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedFilters.includes('not_in_contacts')}
+                onChange={() => handleFilterChange('not_in_contacts')}
+                className="rounded border-dark-border text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-dark-text">Không có trong danh bạ</span>
+            </label>
+            
+            <label className="flex items-center space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedFilters.includes('groups')}
+                onChange={() => handleFilterChange('groups')}
+                className="rounded border-dark-border text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-dark-text">Nhóm</span>
+            </label>
+          </div>
+          
+          <div className="flex justify-end pt-4">
+            <button
+              onClick={() => setShowFilterModal(false)}
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md transition-colors"
+            >
+              Áp dụng
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

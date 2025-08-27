@@ -8,6 +8,7 @@ interface ModalProps {
   children: ReactNode;
   footer?: ReactNode;
   initialFocusRef?: React.RefObject<HTMLElement>;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
 const Modal: React.FC<ModalProps> = ({ 
@@ -16,9 +17,17 @@ const Modal: React.FC<ModalProps> = ({
   title, 
   children, 
   footer,
-  initialFocusRef 
+  initialFocusRef,
+  size = 'md'
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+
+  const sizeClasses = {
+    sm: 'sm:max-w-sm',
+    md: 'sm:max-w-lg',
+    lg: 'sm:max-w-2xl',
+    xl: 'sm:max-w-4xl'
+  };
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -59,7 +68,7 @@ const Modal: React.FC<ModalProps> = ({
         
         <div
           ref={modalRef}
-          className="relative bg-white rounded-lg shadow-xl transform transition-all sm:max-w-lg sm:w-full mx-4"
+          className={`relative bg-white rounded-lg shadow-xl transform transition-all ${sizeClasses[size]} sm:w-full mx-4`}
           onClick={e => e.stopPropagation()}
         >
           <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">

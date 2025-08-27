@@ -105,7 +105,19 @@ const setupConnectionHandlers = (conn: signalR.HubConnection) => {
 
 
 const ensureConnection = async (userForConnection: User | null): Promise<signalR.HubConnection> => {
-  if (!userForConnection) {
+  // First check if we have a user stored in the service
+  if (!userForConnection && !currentSignalRUser) {
+    const errMsg = "User not available for SignalR connection.";
+    console.error("SignalR:", errMsg);
+    if (callCallbacks?.onCallError) {
+        callCallbacks.onCallError(errMsg);
+    }
+    throw new Error(errMsg);
+  }
+
+  // Use the stored user if none provided
+  const userToUse = userForConnection || currentSignalRUser;
+  if (!userToUse) {
     const errMsg = "User not available for SignalR connection.";
     console.error("SignalR:", errMsg);
     if (callCallbacks?.onCallError) {
@@ -157,9 +169,9 @@ const ensureConnection = async (userForConnection: User | null): Promise<signalR
         }
       }
       
-      console.log("SignalR: Creating and starting new HubConnection for user:", userForConnection.id);
+      console.log("SignalR: Creating and starting new HubConnection for user:", userToUse.id);
       connection = new signalR.HubConnectionBuilder()
-        .withUrl(`${SIGNALR_CALL_HUB_URL}?userId=${userForConnection.id}`, {
+        .withUrl(`${SIGNALR_CALL_HUB_URL}?userId=${userToUse.id}`, {
           accessTokenFactory: () => tokenStorage.getToken() || ""
         })
         .withAutomaticReconnect() 
@@ -207,14 +219,26 @@ const ensureConnection = async (userForConnection: User | null): Promise<signalR
 
 export const initializeSignalRCallService = (callbacks: SignalRCallCallbacks, user: User | null) => {
   callCallbacks = callbacks;
-  currentSignalRUser = user; 
-  if (currentSignalRUser) {
-      console.log("SignalR: Initializing connection for user:", currentSignalRUser.id);
-      ensureConnection(currentSignalRUser).catch(err => {
-          console.error("SignalR: Background initialization/ensureConnection failed:", err.message);
-      });
+  
+  if (user) {
+    currentSignalRUser = user;
+    console.log("SignalR: Initializing connection for user:", currentSignalRUser.id);
+    // Initialize connection in background
+    ensureConnection(currentSignalRUser).catch(err => {
+        console.error("SignalR: Background initialization/ensureConnection failed:", err.message);
+        if (callCallbacks?.onCallError) {
+            callCallbacks.onCallError("Failed to initialize SignalR connection: " + err.message);
+        }
+    });
   } else {
-      console.warn("SignalR Call Service: Current user not available, connection deferred.");
+    console.warn("SignalR Call Service: Current user not available, connection deferred.");
+    // Clear any existing connection if user is null
+    if (connection) {
+      console.log("SignalR: Clearing existing connection due to null user");
+      connection.stop().catch(e => console.warn("Error stopping connection:", e));
+      connection = null;
+    }
+    currentSignalRUser = null;
   }
 };
 
@@ -251,10 +275,40 @@ export const disconnectSignalRCallService = async () => {
   isConnecting = false; // Reset the connecting flag
 };
 
+// Function to update user when needed (e.g., after login/logout)
+export const updateSignalRUser = (user: User | null) => {
+  if (user && user.id !== currentSignalRUser?.id) {
+    console.log("SignalR: Updating user from", currentSignalRUser?.id, "to", user.id);
+    // Disconnect existing connection if user changed
+    if (connection) {
+      connection.stop().catch(e => console.warn("Error stopping connection during user update:", e));
+      connection = null;
+    }
+    currentSignalRUser = user;
+    // Re-initialize connection for new user
+    if (callCallbacks) {
+      ensureConnection(currentSignalRUser).catch(err => {
+        console.error("SignalR: Failed to establish connection for new user:", err.message);
+        if (callCallbacks?.onCallError) {
+          callCallbacks.onCallError("Failed to establish connection for new user: " + err.message);
+        }
+      });
+    }
+  } else if (!user && currentSignalRUser) {
+    console.log("SignalR: Clearing user, disconnecting");
+    if (connection) {
+      connection.stop().catch(e => console.warn("Error stopping connection during user clear:", e));
+      connection = null;
+    }
+    currentSignalRUser = null;
+  }
+};
+
 // Helper for invoking hub methods with error handling
 const invokeHubMethod = async (methodName: string, payload: any, callId?: string) => {
   let activeConnection: signalR.HubConnection;
   try {
+    // Always use currentSignalRUser for consistency
     activeConnection = await ensureConnection(currentSignalRUser);
   } catch (e: any) {
     console.error(`SignalR: ensureConnection failed before invoking ${methodName}:`, e.message);

@@ -18,7 +18,8 @@ export class SignalRChatService {
     private isInitialized = false;
     private isConnecting = false;
     private connectionAttempts = 0;
-    private maxConnectionAttempts = 3;
+    private maxConnectionAttempts = 5;
+    private reconnectTimer: number | null = null;
 
     constructor() {
         // Defer connection initialization until start() is called
@@ -109,26 +110,42 @@ export class SignalRChatService {
 
         this.connection.onreconnected((connectionId) => {
             console.log('SignalR Connection reconnected with ID:', connectionId);
+            this.connectionAttempts = 0; // Reset attempts on successful reconnection
         });
 
         this.connection.onclose(async (error) => {
             console.log('SignalR Connection closed, attempting to reconnect...', error);
-            await this.retryConnection();
+            this.scheduleReconnect();
         });
     }
 
+    private scheduleReconnect(): void {
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+        }
+
+        const delay = Math.min(1000 * Math.pow(2, this.connectionAttempts), 30000); // Max 30 seconds
+        this.reconnectTimer = window.setTimeout(() => {
+            this.retryConnection();
+        }, delay);
+    }
+
     private async retryConnection(retryAttempt = 0, maxRetries = 5): Promise<void> {
-        if (!this.connection) return;
+        if (!this.connection || this.connectionAttempts >= maxRetries) {
+            console.log('Max retry attempts reached or connection not available');
+            return;
+        }
 
         try {
+            this.connectionAttempts++;
+            console.log(`Attempting to reconnect (${this.connectionAttempts}/${maxRetries})...`);
             await this.connection.start();
             console.log('SignalR Connection reestablished');
+            this.connectionAttempts = 0; // Reset on successful connection
         } catch (err) {
-            console.error(`SignalR Connection retry attempt ${retryAttempt + 1} failed:`, err);
-            if (retryAttempt < maxRetries) {
-                const delay = Math.min(1000 * Math.pow(2, retryAttempt), 10000);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                await this.retryConnection(retryAttempt + 1, maxRetries);
+            console.error(`SignalR Connection retry attempt ${this.connectionAttempts} failed:`, err);
+            if (this.connectionAttempts < maxRetries) {
+                this.scheduleReconnect();
             }
         }
     }
@@ -165,13 +182,15 @@ export class SignalRChatService {
             // Handle specific handshake errors
             if (err instanceof Error) {
                 if (err.message.includes('Handshake was canceled') || 
-                    err.message.includes('handshake error')) {
+                    err.message.includes('handshake error') ||
+                    err.message.includes('Failed to start transport')) {
                     console.warn('Handshake error detected, this might be due to server not running or authentication issues');
                     
                     // If we have connection attempts left, try to reconnect
                     if (this.connectionAttempts < this.maxConnectionAttempts) {
-                        console.log(`Retrying connection attempt ${this.connectionAttempts + 1}/${this.maxConnectionAttempts}`);
-                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        console.log(`Retrying connection attempt ${this.connectionAttempts}/${this.maxConnectionAttempts}`);
+                        const delay = Math.min(1000 * Math.pow(2, this.connectionAttempts), 10000);
+                        await new Promise(resolve => setTimeout(resolve, delay));
                         return this.start();
                     }
                 }
@@ -179,12 +198,18 @@ export class SignalRChatService {
             
             // Don't throw error, just log it and allow the app to continue
             console.warn('SignalR connection failed, but app will continue without real-time features');
+            throw err; // Re-throw to let caller handle it
         } finally {
             this.isConnecting = false;
         }
     }
 
     async stop(): Promise<void> {
+        if (this.reconnectTimer) {
+            window.clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+
         if (this.connection?.state === signalR.HubConnectionState.Connected) {
             await this.connection.stop();
             console.log('SignalR Connection stopped');
@@ -261,5 +286,13 @@ export class SignalRChatService {
 
     isConnected(): boolean {
         return this.connection?.state === signalR.HubConnectionState.Connected;
+    }
+
+    getConnectionState(): string {
+        return this.connection?.state || 'Unknown';
+    }
+
+    getConnectionAttempts(): number {
+        return this.connectionAttempts;
     }
 }

@@ -7,8 +7,8 @@ import UserAvatar from './UserAvatar';
 import TypingIndicator from './TypingIndicator'; 
 import { MessageSquareIcon, PhoneSolidIcon, VideoIcon, MoreVerticalIcon } from './icons';
 import { UserRole } from '../types'; 
-import type { User } from '../types'; 
 import ChatDetailsSidebar from './ChatDetailsSidebar';
+import ConnectionStatus from './ConnectionStatus';
 import { useCall } from '../contexts/CallContext';
 import { getDisplayName } from '../utils/displayName';
 
@@ -37,7 +37,6 @@ const ChatWindow: React.FC = () => {
         username: activeChat.name,
         displayName: activeChat.name,
         avatarUrl: activeChat.avatarUrl,
-        email: '',
         isOnline: false,
         role: UserRole.USER
       }
@@ -99,12 +98,21 @@ const ChatWindow: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center space-x-4 text-dark-text">
-          {!isSignalRConnected && (
-            <div className="flex items-center space-x-1 text-yellow-400 text-xs">
-              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-              <span>Offline</span>
-            </div>
-          )}
+          {/* Connection Status */}
+          <div className="flex items-center space-x-2">
+            {!isSignalRConnected ? (
+              <div className="flex items-center space-x-1 text-red-400 text-xs">
+                <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                <span>Offline</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-1 text-green-400 text-xs">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span>Online</span>
+              </div>
+            )}
+          </div>
+          
           <button 
             onClick={() => handleInitiateCall("voice")}
             className="p-2 hover:bg-primary-700/20 rounded-full transition-colors"
@@ -125,6 +133,9 @@ const ChatWindow: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Connection Status Banner */}
+      <ConnectionStatus />
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-dark-bg">

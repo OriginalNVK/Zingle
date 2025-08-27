@@ -3,6 +3,7 @@ import type { User, Message, Chat as ChatType } from '../types';
 import { UserRole, MessageType } from '../types';
 import UserAvatar from './UserAvatar';
 import { getDisplayName } from '../utils/displayName';
+import CallButton from './CallButton';
 import {
   XIcon,
   FileTextIcon,
@@ -99,9 +100,9 @@ const ChatDetailsSidebar: React.FC<ChatDetailsSidebarProps> = ({
   };
   
   const renderSectionPreview = (title: string, items: any[], renderItem: (item: any, index: number) => React.ReactElement, onShowAll: () => void, icon: React.ReactElement) => (
-    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+    <div className="mb-4 p-3 bg-dark-card rounded-lg border border-dark-border">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-sm font-semibold text-gray-700 flex items-center">
+        <h3 className="text-sm font-semibold text-dark-text flex items-center">
           {icon}
           <span className="ml-2">{title}</span>
         </h3>
@@ -117,7 +118,7 @@ const ChatDetailsSidebar: React.FC<ChatDetailsSidebarProps> = ({
           {items.slice(0, 6).map((item, index) => renderItem(item, index))}
         </div>
       ) : (
-        <p className="text-xs text-gray-400 text-center py-4">No items yet</p>
+        <p className="text-xs text-dark-muted text-center py-4">No items yet</p>
       )}
     </div>
   );
@@ -135,11 +136,11 @@ const ChatDetailsSidebar: React.FC<ChatDetailsSidebarProps> = ({
   const renderFileItem = (msg: Message, index: number) => (
     <div 
       key={msg.id + index}
-      className="flex items-center p-2 bg-white rounded border border-gray-200 hover:border-primary-500 cursor-pointer transition-colors"
+      className="flex items-center p-2 bg-dark-hover rounded border border-dark-border hover:border-primary-500 cursor-pointer transition-colors"
       onClick={() => msg.fileUrl && window.open(msg.fileUrl, '_blank')}
     >
-      <FileTextIcon className="w-4 h-4 text-gray-500 mr-2" />
-      <span className="text-xs truncate">{msg.fileName || msg.content}</span>
+      <FileTextIcon className="w-4 h-4 text-dark-muted mr-2" />
+      <span className="text-xs truncate text-dark-text">{msg.fileName || msg.content}</span>
     </div>
   );
 
@@ -160,11 +161,11 @@ const ChatDetailsSidebar: React.FC<ChatDetailsSidebarProps> = ({
         {msg.urls.map((url, urlIndex) => (
           <div 
             key={`${msg.id}-${urlIndex}`}
-            className="flex items-center p-2 bg-white rounded border border-gray-200 hover:border-primary-500 cursor-pointer transition-colors"
+            className="flex items-center p-2 bg-dark-hover rounded border border-dark-border hover:border-primary-500 cursor-pointer transition-colors"
             onClick={() => validateAndOpenUrl(url)}
           >
-            <LinkIcon className="w-4 h-4 text-gray-500 mr-2" />
-            <span className="text-xs truncate">{url}</span>
+            <LinkIcon className="w-4 h-4 text-dark-muted mr-2" />
+            <span className="text-xs truncate text-dark-text">{url}</span>
           </div>
         ))}
       </div>
@@ -174,11 +175,11 @@ const ChatDetailsSidebar: React.FC<ChatDetailsSidebarProps> = ({
   if (!isOpen || !chat || !currentUser) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-80 bg-white shadow-xl transform transition-transform duration-300 ease-in-out z-50">
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+    <div className="fixed inset-y-0 right-0 w-80 bg-dark-card shadow-xl transform transition-transform duration-300 ease-in-out z-50 border-l border-dark-border">
+      <div className="flex items-center justify-between p-4 border-b border-dark-border">
         <button 
           onClick={() => viewMode === 'tabs' ? setViewMode('overview') : onClose()}
-          className="text-gray-500 hover:text-primary-600"
+          className="text-dark-muted hover:text-primary-600"
         >
           {viewMode === 'tabs' ? (
             <ChevronLeftIcon className="w-5 h-5" />
@@ -186,20 +187,20 @@ const ChatDetailsSidebar: React.FC<ChatDetailsSidebarProps> = ({
             <XIcon className="w-5 h-5" />
           )}
         </button>
-        <span className="text-lg font-semibold">{viewMode === 'overview' ? 'Chat Details' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</span>
+        <span className="text-lg font-semibold text-dark-text">{viewMode === 'overview' ? 'Chat Details' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</span>
         <div className="w-5" /> {/* Spacer for alignment */}
       </div>
 
       {/* User Info */}
-      <div className="p-4 text-center border-b border-gray-200">
+      <div className="p-4 text-center border-b border-dark-border">
         {displayUser && (
           <UserAvatar user={displayUser} size="xl" className="mx-auto mb-2" />
         )}
         {!isEditingNickname ? (
           <div className="flex items-center justify-center">
-            <h3 className="text-md font-semibold text-gray-700">{nickname || (displayUser ? getDisplayName(displayUser) : 'Unknown')}</h3>
+            <h3 className="text-md font-semibold text-dark-text">{nickname || (displayUser ? getDisplayName(displayUser) : 'Unknown')}</h3>
             {!chat.isGroupChat && (
-              <button onClick={() => setIsEditingNickname(true)} className="ml-2 text-gray-400 hover:text-primary-500">
+              <button onClick={() => setIsEditingNickname(true)} className="ml-2 text-dark-muted hover:text-primary-500">
                 <Edit2Icon className="w-3.5 h-3.5" />
               </button>
             )}
@@ -210,19 +211,19 @@ const ChatDetailsSidebar: React.FC<ChatDetailsSidebarProps> = ({
               type="text" 
               value={nickname} 
               onChange={(e) => setNickname(e.target.value)} 
-              className="text-sm p-1 border rounded-md text-center focus:ring-primary-500 focus:border-primary-500"
+              className="text-sm p-1 border border-dark-border rounded-md text-center bg-dark-bg text-dark-text focus:ring-primary-500 focus:border-primary-500"
               autoFocus
             />
             <Button size="sm" onClick={handleSaveNickname} className="px-2 py-1">Save</Button>
           </div>
         )}
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-dark-muted">
           {chat.isGroupChat ? `${chat.participants.length} members` : (displayUser?.isOnline ? 'Online' : 'Offline')}
         </p>
       </div>
 
       {/* Content Area */}
-      <div className="flex-grow overflow-y-auto p-3">
+      <div className="flex-grow overflow-y-auto p-3 bg-dark-bg">
         {viewMode === 'overview' ? (
           <>
             {renderSectionPreview(
@@ -230,21 +231,21 @@ const ChatDetailsSidebar: React.FC<ChatDetailsSidebarProps> = ({
               mediaMessages, 
               renderMediaItem, 
               () => switchToTabView('media'),
-              <ImageIcon className="w-4 h-4"/>
+              <ImageIcon className="w-4 h-4 text-dark-muted"/>
             )}
             {renderSectionPreview(
               "Files", 
               fileMessages, 
               renderFileItem, 
               () => switchToTabView('files'),
-              <FileTextIcon className="w-4 h-4"/>
+              <FileTextIcon className="w-4 h-4 text-dark-muted"/>
             )}
             {renderSectionPreview(
               "Links", 
               linkMessages, 
               renderLinkItem, 
               () => switchToTabView('links'),
-              <LinkIcon className="w-4 h-4"/>
+              <LinkIcon className="w-4 h-4 text-dark-muted"/>
             )}
           </>
         ) : (
@@ -254,28 +255,35 @@ const ChatDetailsSidebar: React.FC<ChatDetailsSidebarProps> = ({
                 <div className="grid grid-cols-3 gap-2">
                   {mediaMessages.map(renderMediaItem)}
                 </div>
-                : <p className="text-xs text-gray-400 text-center py-4">No media yet</p>
+                : <p className="text-xs text-dark-muted text-center py-4">No media yet</p>
             )}
             {activeTab === 'files' && (
               fileMessages.length > 0 ?
                 <div className="space-y-1">
                   {fileMessages.map(renderFileItem)}
                 </div>
-                : <p className="text-xs text-gray-400 text-center py-4">No files yet</p>
+                : <p className="text-xs text-dark-muted text-center py-4">No files yet</p>
             )}
             {activeTab === 'links' && (
               linkMessages.length > 0 ?
                 <div className="space-y-1">
                   {linkMessages.map(renderLinkItem)}
                 </div>
-                : <p className="text-xs text-gray-400 text-center py-4">No links yet</p>
+                : <p className="text-xs text-dark-muted text-center py-4">No links yet</p>
             )}
           </div>
         )}
       </div>
 
       {/* Actions Footer */}
-      <div className="p-3 border-t border-gray-200 space-y-2">
+      <div className="p-3 border-t border-dark-border space-y-2 bg-dark-card">
+        {/* Call Buttons - Only show for individual chats, not group chats */}
+        {!chat.isGroupChat && otherParticipant && (
+          <div className="flex justify-center space-x-2 mb-3">
+            <CallButton targetUser={otherParticipant} />
+          </div>
+        )}
+        
         {!chat.isGroupChat && (
           <Button
             variant="danger"

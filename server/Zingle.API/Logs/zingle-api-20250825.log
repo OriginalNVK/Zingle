@@ -1,0 +1,71 @@
+2025-08-25 17:12:28.343 +07:00 [INF] Migrating database...
+2025-08-25 17:12:29.762 +07:00 [INF] Executed DbCommand (40ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2025-08-25 17:12:29.827 +07:00 [INF] Executed DbCommand (33ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2025-08-25 17:12:29.837 +07:00 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2025-08-25 17:12:29.842 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2025-08-25 17:12:29.898 +07:00 [INF] Executed DbCommand (32ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2025-08-25 17:12:29.922 +07:00 [INF] No migrations were applied. The database is already up to date.
+2025-08-25 17:12:30.377 +07:00 [INF] Executed DbCommand (140ms) [Parameters=[@__normalizedName_0='?' (Size = 256)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [a].[Id], [a].[ConcurrencyStamp], [a].[Name], [a].[NormalizedName]
+FROM [AspNetRoles] AS [a]
+WHERE [a].[NormalizedName] = @__normalizedName_0
+2025-08-25 17:12:30.447 +07:00 [INF] Executed DbCommand (4ms) [Parameters=[@__normalizedName_0='?' (Size = 256)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [a].[Id], [a].[ConcurrencyStamp], [a].[Name], [a].[NormalizedName]
+FROM [AspNetRoles] AS [a]
+WHERE [a].[NormalizedName] = @__normalizedName_0
+2025-08-25 17:12:30.479 +07:00 [INF] Executed DbCommand (13ms) [Parameters=[@__normalizedEmail_0='?' (Size = 256)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(2) [a].[Id], [a].[AccessFailedCount], [a].[AvatarUrl], [a].[Bio], [a].[ConcurrencyStamp], [a].[CreatedAt], [a].[DisplayName], [a].[Email], [a].[EmailConfirmed], [a].[IsOnline], [a].[LastActive], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedEmail] = @__normalizedEmail_0
+2025-08-25 17:12:30.563 +07:00 [INF] Executed DbCommand (4ms) [Parameters=[@__normalizedEmail_0='?' (Size = 256)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(2) [a].[Id], [a].[AccessFailedCount], [a].[AvatarUrl], [a].[Bio], [a].[ConcurrencyStamp], [a].[CreatedAt], [a].[DisplayName], [a].[Email], [a].[EmailConfirmed], [a].[IsOnline], [a].[LastActive], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedEmail] = @__normalizedEmail_0
+2025-08-25 17:12:30.572 +07:00 [INF] Executed DbCommand (6ms) [Parameters=[@__normalizedEmail_0='?' (Size = 256)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(2) [a].[Id], [a].[AccessFailedCount], [a].[AvatarUrl], [a].[Bio], [a].[ConcurrencyStamp], [a].[CreatedAt], [a].[DisplayName], [a].[Email], [a].[EmailConfirmed], [a].[IsOnline], [a].[LastActive], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedEmail] = @__normalizedEmail_0
+2025-08-25 17:12:30.582 +07:00 [INF] Executed DbCommand (4ms) [Parameters=[@__normalizedEmail_0='?' (Size = 256)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(2) [a].[Id], [a].[AccessFailedCount], [a].[AvatarUrl], [a].[Bio], [a].[ConcurrencyStamp], [a].[CreatedAt], [a].[DisplayName], [a].[Email], [a].[EmailConfirmed], [a].[IsOnline], [a].[LastActive], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedEmail] = @__normalizedEmail_0
+2025-08-25 17:12:30.593 +07:00 [INF] Executed DbCommand (5ms) [Parameters=[@__normalizedEmail_0='?' (Size = 256)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(2) [a].[Id], [a].[AccessFailedCount], [a].[AvatarUrl], [a].[Bio], [a].[ConcurrencyStamp], [a].[CreatedAt], [a].[DisplayName], [a].[Email], [a].[EmailConfirmed], [a].[IsOnline], [a].[LastActive], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedEmail] = @__normalizedEmail_0
+2025-08-25 17:12:30.605 +07:00 [INF] Executed DbCommand (7ms) [Parameters=[@__normalizedEmail_0='?' (Size = 256)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(2) [a].[Id], [a].[AccessFailedCount], [a].[AvatarUrl], [a].[Bio], [a].[ConcurrencyStamp], [a].[CreatedAt], [a].[DisplayName], [a].[Email], [a].[EmailConfirmed], [a].[IsOnline], [a].[LastActive], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedEmail] = @__normalizedEmail_0
+2025-08-25 17:12:30.639 +07:00 [INF] Executed DbCommand (7ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [Chats] AS [c]) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+2025-08-25 17:12:30.646 +07:00 [INF] Database initialized successfully
+2025-08-25 17:12:30.852 +07:00 [WRN] The WebRootPath was not found: D:\Work\ProfessionalProject\Zingle-App\server\Zingle.API\wwwroot. Static files may be unavailable.
+2025-08-25 17:12:30.900 +07:00 [INF] Now listening on: http://localhost:5024
+2025-08-25 17:12:30.903 +07:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-08-25 17:12:30.905 +07:00 [INF] Hosting environment: Development
+2025-08-25 17:12:30.907 +07:00 [INF] Content root path: D:\Work\ProfessionalProject\Zingle-App\server\Zingle.API
+2025-08-25 17:12:34.302 +07:00 [WRN] Failed to determine the https port for redirect.
+2025-08-25 17:12:35.863 +07:00 [WRN] CORS headers missing in response for GET /
+2025-08-25 17:12:42.479 +07:00 [WRN] CORS headers missing in response for GET /swagger/
+2025-08-25 17:12:42.570 +07:00 [WRN] CORS headers missing in response for GET /swagger/index.html
+2025-08-25 17:12:42.647 +07:00 [WRN] CORS headers missing in response for GET /swagger/index.js
+2025-08-25 17:12:42.650 +07:00 [WRN] CORS headers missing in response for GET /swagger/swagger-ui.css
+2025-08-25 17:12:42.650 +07:00 [WRN] CORS headers missing in response for GET /swagger/swagger-ui-standalone-preset.js
+2025-08-25 17:12:42.650 +07:00 [WRN] CORS headers missing in response for GET /swagger/index.css
+2025-08-25 17:12:42.651 +07:00 [WRN] CORS headers missing in response for GET /swagger/swagger-ui-bundle.js
+2025-08-25 17:12:42.951 +07:00 [WRN] CORS headers missing in response for GET /swagger/favicon-32x32.png
+2025-08-25 17:12:43.045 +07:00 [WRN] CORS headers missing in response for GET /swagger/v1/swagger.json
+2025-08-25 17:34:48.080 +07:00 [INF] Application is shutting down...

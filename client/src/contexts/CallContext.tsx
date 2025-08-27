@@ -1,8 +1,8 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import type { ReactNode } from 'react';
+import { CallState } from '../types';
 import type { 
   User, 
-  CallSession,
+  CallSession, 
   InitiateCallSignalPayload,
   CallOfferSignalPayload,
   CallAnswerSignalPayload,
@@ -12,10 +12,9 @@ import type {
   CallEndedSignalPayload,
   SignalRBasePayload
 } from '../types';
-import { CallState } from '../types';
 import { useAuth } from '../hooks/useAuth';
-import * as signalrCallService from '../services/signalrCallService';
 import { RTC_CONFIGURATION } from '../constants';
+import * as signalrCallService from '../services/signalrCallService';
 
 const initialCallSession: CallSession = {
   callId: '',
@@ -49,7 +48,7 @@ export const useCall = () => {
 };
 
 interface CallProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
@@ -57,8 +56,15 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   const [callSession, setCallSession] = useState<CallSession>(initialCallSession);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
   const [incomingCallDetails, setIncomingCallDetails] = useState<InitiateCallSignalPayload | null>(null);
+  const [callTimeoutId, setCallTimeoutId] = useState<number | null>(null);
 
   const resetCallSession = useCallback(() => {
+    // Clear call timeout if exists
+    if (callTimeoutId) {
+      clearTimeout(callTimeoutId);
+      setCallTimeoutId(null);
+    }
+    
     if (callSession.localStream) {
       callSession.localStream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
     }
@@ -67,7 +73,38 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     }
     setCallSession(initialCallSession);
     setIsCallModalOpen(false);
-  }, [callSession.localStream, callSession.peerConnection]);
+  }, [callSession.localStream, callSession.peerConnection, callTimeoutId]);
+
+  // Create timeout for outgoing calls (30 seconds)
+  const createCallTimeout = useCallback((callId: string) => {
+    const timeoutId = window.setTimeout(async () => {
+      console.log(`Call timeout reached for ${callId}, ending call automatically`);
+      if (callSession.callId === callId && callSession.state === CallState.INITIATING_OUTGOING) {
+        setCallSession(prev => ({
+          ...prev, 
+          state: CallState.ERROR, 
+          error: "Call timeout - no answer after 30 seconds"
+        }));
+        
+        // Send decline signal to end the call
+        try {
+          await signalrCallService.sendCallDeclinedSignal({ 
+            callId, 
+            declinerId: currentUser!.id 
+          });
+        } catch (error) {
+          console.error("Error sending timeout decline signal:", error);
+        }
+        
+        // Reset after a short delay to show the error message
+        setTimeout(() => {
+          resetCallSession();
+        }, 2000);
+      }
+    }, 30000); // 30 seconds
+    
+    setCallTimeoutId(timeoutId);
+  }, [callSession.callId, callSession.state, currentUser, resetCallSession]);
 
   const createPeerConnection = useCallback((currentCallId: string): RTCPeerConnection => {
     const pc = new RTCPeerConnection(RTC_CONFIGURATION);
@@ -113,12 +150,20 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       initiator: payload.initiator,
       targetUser: payload.targetUser,
     }));
+    // Show modal immediately when receiving incoming call
+    setIsCallModalOpen(true);
   }, [callSession.state, currentUser]);
 
   const handleCallAccepted = useCallback(async (payload: CallAcceptedSignalPayload) => {
     // This is for the original caller when the callee accepts
     if (!currentUser || callSession.callId !== payload.callId || callSession.state !== CallState.INITIATING_OUTGOING) return;
     console.log("CallContext: Call accepted by", payload.accepter.username);
+
+    // Clear timeout since call was accepted
+    if (callTimeoutId) {
+      clearTimeout(callTimeoutId);
+      setCallTimeoutId(null);
+    }
 
     setCallSession(prev => ({ 
         ...prev, 
@@ -145,7 +190,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         console.error("PeerConnection or LocalStream not ready for offer");
         setCallSession(prev => ({...prev, state: CallState.ERROR, error: "Call setup error"}));
     }
-  }, [currentUser, callSession.callId, callSession.state, callSession.peerConnection, callSession.localStream]);
+  }, [currentUser, callSession.callId, callSession.state, callSession.peerConnection, callSession.localStream, callTimeoutId]);
 
   const handleOffer = useCallback(async (payload: CallOfferSignalPayload) => {
     // This is for the callee who accepted the call and is now receiving an offer
@@ -238,6 +283,7 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
 
   useEffect(() => {
     if (currentUser) {
+      console.log("CallContext: Initializing SignalR for user:", currentUser.id);
       signalrCallService.initializeSignalRCallService({
         onIncomingCall: handleIncomingCall,
         onCallOffer: handleOffer,
@@ -249,7 +295,11 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         onUserBusy: handleUserBusy,
         onCallError: handleCallError,
       }, currentUser);
+    } else {
+      console.log("CallContext: No current user, clearing SignalR");
+      signalrCallService.updateSignalRUser(null);
     }
+    
     return () => {
       // Cleanup function to safely disconnect
       const cleanup = async () => {
@@ -262,7 +312,15 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       };
       cleanup();
     };
-  }, [currentUser]); // Only depend on currentUser to avoid re-initialization
+  }, []); // Empty dependency array - only run once on mount
+
+  // Handle user changes separately
+  useEffect(() => {
+    if (currentUser) {
+      console.log("CallContext: User changed, updating SignalR connection for:", currentUser.id);
+      signalrCallService.updateSignalRUser(currentUser);
+    }
+  }, [currentUser?.id]); // Only depend on user ID changes
 
 
   const initiateCall = async (targetUser: User, type: 'video' | 'voice'): Promise<void> => {
@@ -293,6 +351,12 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
         localStream: stream,
         peerConnection: pc,
       }));
+      
+      // Show call modal when initiating call
+      setIsCallModalOpen(true);
+      
+      // Create timeout for this call
+      createCallTimeout(callId);
       
       await signalrCallService.sendInitiateCallRequest({
         callId,
@@ -369,12 +433,48 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
   };
 
   const endCall = async (): Promise<void> => {
-    if (!callSession.callId || (callSession.state !== CallState.ONGOING && callSession.state !== CallState.NEGOTIATING)) {
-      // alert("No active call to end."); // Could be too noisy if called during cleanup
+    if (!callSession.callId) {
+      console.log("No call ID, performing local cleanup only");
+      resetCallSession();
       return;
     }
-    console.log(`Ending call ${callSession.callId}`);
-    await signalrCallService.sendCallEndedSignal({ callId: callSession.callId, enderId: currentUser!.id });
+
+    // Handle different states appropriately
+    if (callSession.state === CallState.RECEIVING_INCOMING) {
+      // If receiving incoming call, decline it
+      console.log(`Declining incoming call ${callSession.callId}`);
+      await signalrCallService.sendCallDeclinedSignal({ 
+        callId: callSession.callId, 
+        declinerId: currentUser!.id 
+      });
+      resetCallSession();
+      return;
+    }
+
+    if (callSession.state === CallState.INITIATING_OUTGOING) {
+      // If initiating outgoing call, cancel it
+      console.log(`Cancelling outgoing call ${callSession.callId}`);
+      await signalrCallService.sendCallDeclinedSignal({ 
+        callId: callSession.callId, 
+        declinerId: currentUser!.id 
+      });
+      resetCallSession();
+      return;
+    }
+
+    if (callSession.state === CallState.ONGOING || callSession.state === CallState.NEGOTIATING) {
+      // If call is ongoing or negotiating, end it properly
+      console.log(`Ending active call ${callSession.callId}`);
+      await signalrCallService.sendCallEndedSignal({ 
+        callId: callSession.callId, 
+        enderId: currentUser!.id 
+      });
+      resetCallSession();
+      return;
+    }
+
+    // For any other state, just cleanup locally
+    console.log(`Ending call in state ${callSession.state}, cleaning up locally`);
     resetCallSession();
   };
 
