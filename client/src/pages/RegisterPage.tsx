@@ -13,20 +13,77 @@ const RegisterPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
   const { register, isLoading, login } = useAuth();
   const navigate = useNavigate();
+
+  const validatePassword = (password: string): string | null => {
+    if (password.length < 6) {
+      return 'Password must be at least 6 characters long.';
+    }
+    if (!/(?=.*[a-z])/.test(password)) {
+      return 'Password must contain at least one lowercase letter.';
+    }
+    if (!/(?=.*[A-Z])/.test(password)) {
+      return 'Password must contain at least one uppercase letter.';
+    }
+    if (!/(?=.*\d)/.test(password)) {
+      return 'Password must contain at least one number.';
+    }
+    return null;
+  };
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateUsername = (username: string): string | null => {
+    if (username.length < 3) {
+      return 'Username must be at least 3 characters long.';
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      return 'Username can only contain letters, numbers, underscores, and hyphens.';
+    }
+    return null;
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
+    
+    // Client-side validation
     if (!username || !email || !password || !confirmPassword) {
       setError('Please fill in all fields.');
       return;
     }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+
+    // Username validation
+    const usernameError = validateUsername(username);
+    if (usernameError) {
+      setFieldErrors({ username: usernameError });
       return;
     }
+
+    // Email validation
+    if (!validateEmail(email)) {
+      setFieldErrors({ email: 'Please enter a valid email address.' });
+      return;
+    }
+
+    // Password validation
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setFieldErrors({ password: passwordError });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setFieldErrors({ confirmPassword: 'Passwords do not match.' });
+      return;
+    }
+
     try {
       await register(username, email, password);
       // Auto-login after registration for Zingle flow
@@ -58,9 +115,14 @@ const RegisterPage: React.FC = () => {
             type="text"
             required
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => {
+              setUsername(e.target.value);
+              setFieldErrors(prev => ({ ...prev, username: '' }));
+            }}
+            error={fieldErrors.username}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
             placeholder="Alex Johnson"
+            helperText="At least 3 characters, letters, numbers, underscores, and hyphens only"
           />
           <Input
             label="Email address"
@@ -69,7 +131,11 @@ const RegisterPage: React.FC = () => {
             autoComplete="email"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setFieldErrors(prev => ({ ...prev, email: '' }));
+            }}
+            error={fieldErrors.email}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
             placeholder="you@example.com"
           />
@@ -80,9 +146,14 @@ const RegisterPage: React.FC = () => {
             autoComplete="new-password"
             required
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setFieldErrors(prev => ({ ...prev, password: '' }));
+            }}
+            error={fieldErrors.password}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
             placeholder="Create a strong password"
+            helperText="Min 6 chars, include uppercase, lowercase, and number"
           />
           <Input
             label="Confirm Password"
@@ -91,7 +162,11 @@ const RegisterPage: React.FC = () => {
             autoComplete="new-password"
             required
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              setFieldErrors(prev => ({ ...prev, confirmPassword: '' }));
+            }}
+            error={fieldErrors.confirmPassword}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
             placeholder="Confirm your password"
           />

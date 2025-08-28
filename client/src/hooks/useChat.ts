@@ -20,7 +20,9 @@ export const useChat = () => {
       getChatUserIsTyping: () => false,
       isSignalRConnected: false,
       error: null,
-      resetLoadedChats: () => {}
+      resetLoadedChats: () => {},
+      reconnectSignalR: async () => {},
+      startChatWithFriend: async () => ''
     };
   }
   return context;

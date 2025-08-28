@@ -51,9 +51,8 @@ const ChatInput: React.FC<ChatInputProps> = ({ chatId }) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        sendMessage(chatId, file.name, MessageType.IMAGE, undefined, result);
+      reader.onload = () => {
+        sendMessage(chatId, file.name, MessageType.IMAGE);
       };
       reader.readAsDataURL(file);
     }

@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { CallState } from '../types';
+import { NotificationSound } from '../utils/notificationSound';
 import type { 
   User, 
   CallSession, 
@@ -64,6 +65,9 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       clearTimeout(callTimeoutId);
       setCallTimeoutId(null);
     }
+    
+    // Stop calling sound when call ends
+    NotificationSound.stopCallingSound();
     
     if (callSession.localStream) {
       callSession.localStream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
@@ -141,6 +145,10 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       });
       return;
     }
+    
+    // Play calling notification sound for incoming call
+    NotificationSound.playCallingSound();
+    
     setIncomingCallDetails(payload);
     setCallSession((prev) => ({
       ...prev,
@@ -379,6 +387,9 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
     }
     console.log(`Answering call from ${callSession.initiator.username}`);
     setIncomingCallDetails(null); // Clear notification details
+    
+    // Stop calling sound when call is answered
+    NotificationSound.stopCallingSound();
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -422,6 +433,9 @@ export const CallProvider: React.FC<CallProviderProps> = ({ children }) => {
       return;
     }
     setIncomingCallDetails(null);
+    
+    // Stop calling sound when call is declined
+    NotificationSound.stopCallingSound();
 
     const declinerId = currentUser!.id;
     // If we are receiving, targetUser is initiator. If we are initiating, targetUser is callee.

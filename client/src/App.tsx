@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { NotificationSound } from './utils/notificationSound';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ChatPage from './pages/ChatPage';
@@ -17,6 +18,11 @@ import { CallProvider } from './contexts/CallContext'; // Import CallProvider
 import CallModal from './components/CallModal'; // Import CallModal to render globally
 
 const App: React.FC = () => {
+  // Initialize notification sound system on app startup
+  useEffect(() => {
+    NotificationSound.initialize();
+  }, []);
+
   return (
     <AuthProvider>
       <HashRouter>

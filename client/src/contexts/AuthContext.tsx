@@ -61,9 +61,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ...response,
         role: response.role === 'Admin' ? UserRole.ADMIN : UserRole.USER
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login failed:", error);
-      throw new Error('Invalid credentials');
+      throw new Error(error.message || 'Invalid credentials');
     } finally {
       setIsLoading(false);
     }
@@ -79,9 +79,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ...response,
         role: response.role === 'Admin' ? UserRole.ADMIN : UserRole.USER
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration failed:", error);
-      throw error;
+      
+      // Re-throw the error with the original message
+      throw new Error(error.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }

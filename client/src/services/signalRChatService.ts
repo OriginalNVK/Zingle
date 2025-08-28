@@ -130,7 +130,7 @@ export class SignalRChatService {
         }, delay);
     }
 
-    private async retryConnection(retryAttempt = 0, maxRetries = 5): Promise<void> {
+    private async retryConnection(_retryAttempt = 0, maxRetries = 5): Promise<void> {
         if (!this.connection || this.connectionAttempts >= maxRetries) {
             console.log('Max retry attempts reached or connection not available');
             return;

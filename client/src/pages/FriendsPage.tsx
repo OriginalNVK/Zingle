@@ -67,7 +67,6 @@ const FriendsPage: React.FC = () => {
   const [friends, setFriends] = useState<User[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [searchResults, setSearchResults] = useState<User[]>([]);
-  const [isLoadingFriends, setIsLoadingFriends] = useState(true);
   const [isLoadingRequests, setIsLoadingRequests] = useState(true);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [peopleSearchTerm, setPeopleSearchTerm] = useState('');
@@ -94,11 +93,35 @@ const FriendsPage: React.FC = () => {
   const handleAddFriend = async (userId: string) => {
     try {
       setError(null);
+      
+      // Client-side validation
+      if (!userId || userId.trim() === '') {
+        setError('Invalid user ID');
+        return;
+      }
+      
+      if (userId === currentUser?.id) {
+        setError('You cannot send a friend request to yourself');
+        return;
+      }
+      
+      if (isFriend(userId)) {
+        setError('You are already friends with this user');
+        return;
+      }
+      
       await friendApi.sendFriendRequest(userId);
+      
       // Refresh friend requests after sending
       const requestsData = await friendApi.getFriendRequests();
       setFriendRequests(requestsData);
+      
+      // Show success message
+      setError(`Friend request sent successfully!`);
+      setTimeout(() => setError(null), 3000);
+      
     } catch (e) {
+      console.error('Error sending friend request:', e);
       setError(e instanceof Error ? e.message : 'Failed to send friend request');
     }
   };
@@ -165,7 +188,6 @@ const FriendsPage: React.FC = () => {
 
     const loadData = async () => {
       try {
-        setIsLoadingFriends(true);
         setIsLoadingRequests(true);
         setIsLoadingUsers(true);
         setError(null);
@@ -188,7 +210,6 @@ const FriendsPage: React.FC = () => {
         console.error('Error loading data:', e);
         setError(e instanceof Error ? e.message : 'Failed to load data');
       } finally {
-        setIsLoadingFriends(false);
         setIsLoadingRequests(false);
         setIsLoadingUsers(false);
       }
@@ -220,7 +241,11 @@ const FriendsPage: React.FC = () => {
   return (
     <div className="w-full h-full flex flex-col bg-dark-bg text-dark-text overflow-hidden">
       {error && (
-        <div className="p-4 bg-red-500/10 text-red-500 text-sm">
+        <div className={`p-4 text-sm ${
+          error.includes('successfully') 
+            ? 'bg-green-500/10 text-green-500' 
+            : 'bg-red-500/10 text-red-500'
+        }`}>
           {error}
         </div>
       )}

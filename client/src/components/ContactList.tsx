@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useChat } from '../hooks/useChat';
+import { useFriends } from '../hooks/useFriends';
 import { SearchIcon, UserPlusIcon, FilterIcon, PhoneIcon } from './icons';
 import UserAvatar from './UserAvatar';
 import Input from './common/Input';
@@ -10,12 +11,14 @@ import { MessageType, UserRole } from '../types';
 import { getDisplayName } from '../utils/displayName';
 
 const ContactList: React.FC = () => {
-  const { chats, setActiveChatId, activeChatId, isLoadingChats, getChatUserIsTyping } = useChat();
+  const { chats, setActiveChatId, activeChatId, isLoadingChats, getChatUserIsTyping, startChatWithFriend } = useChat();
   const { currentUser } = useAuth();
+  const { friends, isLoadingFriends } = useFriends();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'chats' | 'friends'>('chats');
 
   const filteredChats = chats.filter(chat => {
     const chatPartner = chat.isGroupChat ? null : chat.participants.find(p => p.id !== currentUser?.id);
@@ -33,6 +36,19 @@ const ContactList: React.FC = () => {
     
     return matchesSearch && matchesFilters;
   });
+
+  const filteredFriends = friends.filter(friend => {
+    const nameToSearch = getDisplayName(friend);
+    return nameToSearch.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  const handleStartChatWithFriend = async (friend: any) => {
+    try {
+      await startChatWithFriend(friend);
+    } catch (error) {
+      console.error('Failed to start chat with friend:', error);
+    }
+  };
 
   const formatTimestamp = (date?: Date) => {
     if (!date) return '';
@@ -83,7 +99,9 @@ const ContactList: React.FC = () => {
       {/* Header */}
       <div className="p-4 border-b border-dark-border">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-dark-text">Đoạn chat</h2>
+          <h2 className="text-lg font-semibold text-dark-text">
+            {activeTab === 'chats' ? 'Đoạn chat' : 'Bạn bè'}
+          </h2>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setShowAddUserModal(true)}
@@ -92,23 +110,49 @@ const ContactList: React.FC = () => {
             >
               <UserPlusIcon className="w-5 h-5" />
             </button>
-            <button
-              onClick={() => setShowFilterModal(true)}
-              className={`p-2 rounded-full transition-colors ${
-                selectedFilters.length > 0 
-                  ? 'text-primary-600 bg-primary-600/20' 
-                  : 'text-dark-muted hover:text-primary-600 hover:bg-primary-600/10'
-              }`}
-              title="Lọc đoạn chat"
-            >
-              <FilterIcon className="w-5 h-5" />
-            </button>
+            {activeTab === 'chats' && (
+              <button
+                onClick={() => setShowFilterModal(true)}
+                className={`p-2 rounded-full transition-colors ${
+                  selectedFilters.length > 0 
+                    ? 'text-primary-600 bg-primary-600/20' 
+                    : 'text-dark-muted hover:text-primary-600 hover:bg-primary-600/10'
+                }`}
+                title="Lọc đoạn chat"
+              >
+                <FilterIcon className="w-5 h-5" />
+              </button>
+            )}
           </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex mb-4 border-b border-dark-border">
+          <button
+            onClick={() => setActiveTab('chats')}
+            className={`px-4 py-2 font-medium text-sm transition-colors ${
+              activeTab === 'chats'
+                ? 'border-b-2 border-primary-600 text-primary-600'
+                : 'text-dark-muted hover:text-dark-text'
+            }`}
+          >
+            Đoạn chat ({filteredChats.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('friends')}
+            className={`px-4 py-2 font-medium text-sm transition-colors ${
+              activeTab === 'friends'
+                ? 'border-b-2 border-primary-600 text-primary-600'
+                : 'text-dark-muted hover:text-dark-text'
+            }`}
+          >
+            Bạn bè ({filteredFriends.length})
+          </button>
         </div>
         
         {/* Search Bar */}
         <Input
-          placeholder="Tìm kiếm người dùng và nhóm"
+          placeholder={activeTab === 'chats' ? "Tìm kiếm cuộc trò chuyện..." : "Tìm kiếm bạn bè..."}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           icon={<SearchIcon className="w-5 h-5" />}
@@ -116,94 +160,152 @@ const ContactList: React.FC = () => {
         />
       </div>
 
-      {/* Chat List */}
+      {/* Content List */}
       <div className="flex-1 overflow-y-auto">
-        {!filteredChats.length && (
-          <div className="text-center p-4 text-dark-muted">
-            <p className="text-sm">Không tìm thấy đoạn chat nào</p>
-          </div>
-        )}
+        {activeTab === 'chats' ? (
+          // Chat List
+          <>
+            {!filteredChats.length && (
+              <div className="text-center p-4 text-dark-muted">
+                <p className="text-sm">Không tìm thấy đoạn chat nào</p>
+              </div>
+            )}
 
-        {filteredChats.length > 0 && (
-          <div className="divide-y divide-dark-border">
-            {filteredChats.map(chat => {
-              const chatPartner = !chat.isGroupChat ? chat.participants.find(p => p.id !== currentUser?.id) : null;
-              const isTyping = getChatUserIsTyping(chat.id);
-              
-              let lastMessageText = chat.lastMessage?.content || '';
-              if (chat.lastMessage?.type === MessageType.IMAGE) {
-                lastMessageText = 'Photo';
-              } else if (chat.lastMessage?.type === MessageType.FILE) {
-                lastMessageText = 'File';
-              }
+            {filteredChats.length > 0 && (
+              <div className="divide-y divide-dark-border">
+                {filteredChats.map(chat => {
+                  const chatPartner = !chat.isGroupChat ? chat.participants.find(p => p.id !== currentUser?.id) : null;
+                  const isTyping = getChatUserIsTyping(chat.id);
+                  
+                  let lastMessageText = chat.lastMessage?.content || '';
+                  if (chat.lastMessage?.type === MessageType.IMAGE) {
+                    lastMessageText = 'Photo';
+                  } else if (chat.lastMessage?.type === MessageType.FILE) {
+                    lastMessageText = 'File';
+                  }
 
-              let messagePrefix = '';
-              if (chat.lastMessage?.senderId === currentUser?.id && chat.lastMessage?.type !== MessageType.SYSTEM) {
-                messagePrefix = 'Bạn: ';
-              } else if (chat.isGroupChat && chat.lastMessage) {
-                const sender = chat.participants.find(p => p.id === chat.lastMessage?.senderId);
-                messagePrefix = sender ? `${getDisplayName(sender)}: ` : '';
-              }
+                  let messagePrefix = '';
+                  if (chat.lastMessage?.senderId === currentUser?.id && chat.lastMessage?.type !== MessageType.SYSTEM) {
+                    messagePrefix = 'Bạn: ';
+                  } else if (chat.isGroupChat && chat.lastMessage) {
+                    const sender = chat.participants.find(p => p.id === chat.lastMessage?.senderId);
+                    messagePrefix = sender ? `${getDisplayName(sender)}: ` : '';
+                  }
 
-              return (
-                <div
-                  key={chat.id}
-                  className={`flex items-center space-x-3 p-3 hover:bg-dark-hover cursor-pointer
-                    ${chat.id === activeChatId ? 'bg-dark-hover' : ''}`}
-                  onClick={() => setActiveChatId(chat.id)}
-                >
-                  <UserAvatar 
-                    user={chat.isGroupChat ? {
-                      id: chat.id,
-                      username: chat.name,
-                      displayName: chat.name,
-                      avatarUrl: chat.avatarUrl,
-                      isOnline: false,
-                      role: UserRole.USER
-                    } : (chatPartner || {
-                      id: '',
-                      username: 'Unknown',
-                      displayName: 'Unknown',
-                      avatarUrl: undefined,
-                      isOnline: false,
-                      role: UserRole.USER
-                    })}
-                    size="md"
-                    showStatus={!chat.isGroupChat}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline">
-                      <h3 className="font-medium text-dark-text truncate">
-                        {chat.isGroupChat ? chat.name : (chatPartner ? getDisplayName(chatPartner) : 'Unknown')}
-                      </h3>
-                      <span className="text-xs text-dark-muted ml-2">
-                        {formatTimestamp(chat.lastMessage?.timestamp)}
-                      </span>
-                    </div>
-                    <p className="text-sm truncate">
-                      {isTyping ? (
-                        <span className="text-primary-400">đang nhập...</span>
-                      ) : (
-                        <span className="text-dark-muted">{messagePrefix + lastMessageText}</span>
+                  return (
+                    <div
+                      key={chat.id}
+                      className={`flex items-center space-x-3 p-3 hover:bg-dark-hover cursor-pointer
+                        ${chat.id === activeChatId ? 'bg-dark-hover' : ''}`}
+                      onClick={() => setActiveChatId(chat.id)}
+                    >
+                      <UserAvatar 
+                        user={chat.isGroupChat ? {
+                          id: chat.id,
+                          username: chat.name,
+                          displayName: chat.name,
+                          avatarUrl: chat.avatarUrl,
+                          isOnline: false,
+                          role: UserRole.USER
+                        } : (chatPartner || {
+                          id: '',
+                          username: 'Unknown',
+                          displayName: 'Unknown',
+                          avatarUrl: undefined,
+                          isOnline: false,
+                          role: UserRole.USER
+                        })}
+                        size="md"
+                        showStatus={!chat.isGroupChat}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-baseline">
+                          <h3 className="font-medium text-dark-text truncate">
+                            {chat.isGroupChat ? chat.name : (chatPartner ? getDisplayName(chatPartner) : 'Unknown')}
+                          </h3>
+                          <span className="text-xs text-dark-muted ml-2">
+                            {formatTimestamp(chat.lastMessage?.timestamp)}
+                          </span>
+                        </div>
+                        <p className="text-sm truncate">
+                          {isTyping ? (
+                            <span className="text-primary-400">đang nhập...</span>
+                          ) : (
+                            <span className="text-dark-muted">{messagePrefix + lastMessageText}</span>
+                          )}
+                        </p>
+                        {chat.unreadCount > 0 && (
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="text-xs text-dark-muted">
+                              {chat.unreadCount} tin nhắn chưa đọc
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Call Buttons - Only show for individual chats, not group chats */}
+                      {!chat.isGroupChat && chatPartner && (
+                        <CallButton targetUser={chatPartner} />
                       )}
-                    </p>
-                    {chat.unreadCount > 0 && (
-                      <div className="flex items-center justify-between mt-1">
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          // Friends List
+          <>
+            {isLoadingFriends ? (
+              <div className="p-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center space-x-3 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-dark-hover animate-pulse"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-dark-hover rounded w-3/4 mb-2 animate-pulse"></div>
+                      <div className="h-3 bg-dark-hover rounded w-1/2 animate-pulse"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : !filteredFriends.length ? (
+              <div className="text-center p-4 text-dark-muted">
+                <p className="text-sm">Không tìm thấy bạn bè nào</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-dark-border">
+                {filteredFriends.map(friend => (
+                  <div
+                    key={friend.id}
+                    className="flex items-center space-x-3 p-3 hover:bg-dark-hover cursor-pointer"
+                    onClick={() => handleStartChatWithFriend(friend)}
+                  >
+                    <UserAvatar 
+                      user={friend}
+                      size="md"
+                      showStatus={true}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-baseline">
+                        <h3 className="font-medium text-dark-text truncate">
+                          {getDisplayName(friend)}
+                        </h3>
                         <span className="text-xs text-dark-muted">
-                          {chat.unreadCount} tin nhắn chưa đọc
+                          {friend.isOnline ? 'Đang hoạt động' : 'Không hoạt động'}
                         </span>
                       </div>
-                    )}
+                      <p className="text-sm text-dark-muted truncate">
+                        @{friend.username}
+                      </p>
+                    </div>
+                    
+                    {/* Call Button for friends */}
+                    <CallButton targetUser={friend} />
                   </div>
-                  
-                  {/* Call Buttons - Only show for individual chats, not group chats */}
-                  {!chat.isGroupChat && chatPartner && (
-                    <CallButton targetUser={chatPartner} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 

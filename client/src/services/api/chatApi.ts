@@ -1,6 +1,5 @@
 import api from './axiosConfig';
-import type { Chat, Message, User } from '../../types';
-import { MessageType } from '../../types';
+import type { Chat, Message } from '../../types';
 
 interface CreateChatRequest {
     participantIds: string[];

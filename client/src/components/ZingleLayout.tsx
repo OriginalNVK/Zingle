@@ -16,7 +16,6 @@ import {
 } from './icons';
 import { useCall } from '../contexts/CallContext'; // Import useCall
 import { CallState } from '../types'; // Import CallState
-import type { User as UserType } from '../types'; // Import User as type
 import { getDisplayName } from '../utils/displayName';
 import CallModal from './CallModal';
 

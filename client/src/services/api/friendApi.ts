@@ -23,13 +23,35 @@ export const friendApi = {
 
     sendFriendRequest: async (toUserId: string): Promise<FriendRequest> => {
         try {
-            const response = await api.post<FriendRequest>('/friends/requests', { toUserId });
+            console.log('Sending friend request to:', toUserId);
+            const payload = { ToUserId: toUserId };
+            console.log('Request payload:', payload);
+            
+            const response = await api.post<FriendRequest>('/friends/requests', payload);
+            console.log('Friend request response:', response.data);
             return response.data;
         } catch (error: any) {
-            if (error.response?.status === 400) {
-                throw new Error('Cannot send friend request to this user');
+            console.error('Send friend request error:', error);
+            console.error('Error response:', error.response?.data);
+            console.error('Error status:', error.response?.status);
+            
+            // Extract detailed error message from server response
+            if (error.response?.data) {
+                if (typeof error.response.data === 'string') {
+                    throw new Error(error.response.data);
+                } else if (error.response.data.message) {
+                    throw new Error(error.response.data.message);
+                } else if (error.response.data.title) {
+                    throw new Error(error.response.data.title);
+                }
             }
-            throw new Error(error.response?.data?.message || 'Failed to send friend request');
+            
+            // Default error messages based on status code
+            if (error.response?.status === 400) {
+                throw new Error('Cannot send friend request to this user. You may already be friends or have a pending request.');
+            }
+            
+            throw new Error('Failed to send friend request. Please try again.');
         }
     },
 
@@ -38,7 +60,23 @@ export const friendApi = {
             const response = await api.post<Friend>(`/friends/requests/${requestId}/accept`);
             return response.data;
         } catch (error: any) {
-            throw new Error(error.response?.data?.message || 'Failed to accept friend request');
+            console.error('Accept friend request error:', error);
+            
+            if (error.response?.data) {
+                if (typeof error.response.data === 'string') {
+                    throw new Error(error.response.data);
+                } else if (error.response.data.message) {
+                    throw new Error(error.response.data.message);
+                }
+            }
+            
+            if (error.response?.status === 400) {
+                throw new Error('This friend request has already been processed');
+            } else if (error.response?.status === 404) {
+                throw new Error('Friend request not found');
+            }
+            
+            throw new Error('Failed to accept friend request');
         }
     },
 
@@ -46,7 +84,23 @@ export const friendApi = {
         try {
             await api.post(`/friends/requests/${requestId}/decline`);
         } catch (error: any) {
-            throw new Error(error.response?.data?.message || 'Failed to decline friend request');
+            console.error('Decline friend request error:', error);
+            
+            if (error.response?.data) {
+                if (typeof error.response.data === 'string') {
+                    throw new Error(error.response.data);
+                } else if (error.response.data.message) {
+                    throw new Error(error.response.data.message);
+                }
+            }
+            
+            if (error.response?.status === 400) {
+                throw new Error('This friend request has already been processed');
+            } else if (error.response?.status === 404) {
+                throw new Error('Friend request not found');
+            }
+            
+            throw new Error('Failed to decline friend request');
         }
     },
 

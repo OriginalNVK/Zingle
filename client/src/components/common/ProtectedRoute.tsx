@@ -28,7 +28,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to={fallbackPath} replace state={{ from: window.location.pathname }} />;
   }
   
-  if (allowedRoles && currentUser && !allowedRoles.includes(currentUser.role)) {
+  if (allowedRoles && currentUser && !allowedRoles.includes(currentUser.role!)) {
     return <Navigate to={ROUTE_PATHS.CHAT} replace />;
   }
 

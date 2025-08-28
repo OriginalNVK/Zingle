@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import { ROUTE_PATHS, APP_NAME } from '../constants';
-import { ZingleLogo, GoogleIcon, FacebookIcon } from '../components/icons';
+import { ZingleLogo, FacebookIcon } from '../components/icons';
 
 const LoginPage: React.FC = () => {
   const [emailOrUsername, setEmailOrUsername] = useState('');

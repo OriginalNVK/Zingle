@@ -6,7 +6,6 @@ import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import UserAvatar from '../components/UserAvatar';
 import type { User } from '../types';
-import { getDisplayName } from '../utils/displayName';
 
 // Context type from ZingleLayout is now implicitly handled by useZingleLayoutContext
 
